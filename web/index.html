@@ -328,14 +328,19 @@
 			display: inline-flex;
 			align-items: center;
 			justify-content: center;
-			width: 16px;
-			height: 16px;
+			width: 12px;
+			height: 12px;
 			border-radius: 50%;
-			background: #3498db;
+			background: #95a5a6;
 			color: white;
-			font-size: 11px;
-			font-weight: bold;
+			font-size: 8px;
+			font-weight: normal;
 			cursor: help;
+			opacity: 0.6;
+		}
+
+		.tooltip-icon:hover {
+			opacity: 1;
 		}
 
 		.tooltip-popup {
@@ -461,7 +466,7 @@
 						<input type="number" v-model.number="expense.year" min="0">
 					</div>
 					<div class="form-group">
-						<label>Amount (€)</label>
+						<label>Annual Amount (€)</label>
 						<input type="text"
 							:value="formatInputNumber(expense.amount)"
 							@input="expense.amount = parseInputNumber($event.target.value)">
@@ -670,7 +675,7 @@
 			inflationRate: "Annual inflation rate applied to your base expenses. If 2%, your expenses increase 2% per year.",
 			incomeGrowthRate: "Annual income growth rate. If 2%, your salary grows 2% per year. Compare to inflation rate: same = keeping pace with economy, higher = outpacing inflation, lower = falling behind. Note that even if your income growth rate is equal to the inflation rate, a higher, but equal value has a different effect -- your expenses grow faster, and you liquidate assets when not working faster.",
 			taxRateSchedule: "Define tax rates that change over time. Applied to gross income. Years must be in ascending order. Higher tax percentages can represent you taking a step back, and having less income. A 100% tax rate means you stop working.",
-			additionalExpenses: "Extra expenses beyond base (e.g., kids, parents care). These are added on top of your base expenses.",
+			additionalExpenses: "Extra expenses beyond base (e.g., kids, parents care). These are added on top of your base expenses. Expenses start at the specified year and continue until the end of the projection. To terminate an expense, add another entry with 0 amount at the desired year.",
 			assetAllocation: "Your current assets and their expected returns. Liquid assets can be used to cover expenses, non-liquid cannot.",
 			returnRate: "Expected annual return/appreciation rate for this asset.",
 			liquid: "Can this asset be sold/liquidated to cover expenses? (Yes for stocks/crypto, No for primary residence)",
