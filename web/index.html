@@ -280,6 +280,14 @@
 			color: #e74c3c;
 		}
 
+		.positive-savings {
+			color: #27ae60;
+		}
+
+		.negative-savings {
+			color: #e74c3c;
+		}
+
 		.table-container {
 			margin: 20px 0;
 		}
@@ -316,6 +324,23 @@
 
 		.key-metrics strong {
 			color: var(--text-primary);
+		}
+
+		.inline-input {
+			display: inline-block;
+			width: 100px;
+			padding: 2px 6px;
+			border: 1px solid var(--input-border);
+			border-radius: 3px;
+			font-size: 1em;
+			background: var(--input-bg);
+			color: var(--text-primary);
+			text-align: right;
+		}
+
+		.inline-input:focus {
+			outline: none;
+			border-color: #3498db;
 		}
 
 		.label-with-tooltip {
@@ -395,7 +420,7 @@
 			<div class="form-grid">
 				<div class="form-group">
 					<div class="label-with-tooltip">
-						<label>Annual Gross Income (€)</label>
+						<label>Annual Gross Income ({{ params.currency }})</label>
 						<span class="tooltip-icon" :data-tooltip="tooltips.annualGrossIncome">?</span>
 					</div>
 					<input type="text"
@@ -404,7 +429,7 @@
 				</div>
 				<div class="form-group">
 					<div class="label-with-tooltip">
-						<label>Annual Base Expenses (€)</label>
+						<label>Annual Base Expenses ({{ params.currency }})</label>
 						<span class="tooltip-icon" :data-tooltip="tooltips.annualExpenses">?</span>
 					</div>
 					<input type="text"
@@ -412,14 +437,7 @@
 						@input="params.annualExpenses = parseInputNumber($event.target.value)">
 				</div>
 			</div>
-			<div class="form-grid three-column">
-				<div class="form-group">
-					<div class="label-with-tooltip">
-						<label>Projection Years</label>
-						<span class="tooltip-icon" :data-tooltip="tooltips.projectionYears">?</span>
-					</div>
-					<input type="number" v-model.number="params.years" min="1" max="100">
-				</div>
+			<div class="form-grid">
 				<div class="form-group">
 					<div class="label-with-tooltip">
 						<label>Inflation Rate (%)</label>
@@ -433,6 +451,26 @@
 						<span class="tooltip-icon" :data-tooltip="tooltips.incomeGrowthRate">?</span>
 					</div>
 					<input type="number" v-model.number="params.incomeGrowthRate" step="0.1">
+				</div>
+			</div>
+			<div class="form-grid">
+				<div class="form-group">
+					<div class="label-with-tooltip">
+						<label>Projection Years</label>
+						<span class="tooltip-icon" :data-tooltip="tooltips.projectionYears">?</span>
+					</div>
+					<input type="number" v-model.number="params.years" min="1" max="100">
+				</div>
+				<div class="form-group">
+					<label>Currency</label>
+					<select v-model="params.currency">
+						<option value="$">$ (USD)</option>
+						<option value="€">€ (EUR)</option>
+						<option value="£">£ (GBP)</option>
+						<option value="¥">¥ (JPY/CNY)</option>
+						<option value="₹">₹ (INR)</option>
+						<option value="₿">₿ (BTC)</option>
+					</select>
 				</div>
 			</div>
 
@@ -491,7 +529,7 @@
 						<input type="text" v-model="asset.name">
 					</div>
 					<div class="form-group">
-						<label>Amount (€)</label>
+						<label>Amount ({{ params.currency }})</label>
 						<input type="text"
 							:value="formatInputNumber(asset.amount)"
 							@input="asset.amount = parseInputNumber($event.target.value)">
@@ -551,24 +589,32 @@
 				<!-- Key Metrics -->
 				<h2>Key Metrics</h2>
 				<div class="key-metrics">
-					<p><strong>Initial Net Worth:</strong> €{{ formatNumber(projection[0].totalNetWorth) }}</p>
-					<p><strong>Final Net Worth (Year {{ params.years }}):</strong> €{{ formatNumber(projection[projection.length - 1].totalNetWorth) }}</p>
-					<p><strong>Total Growth:</strong> €{{ formatNumber(projection[projection.length - 1].totalNetWorth - projection[0].totalNetWorth) }}</p>
+					<p><strong>Initial Net Worth:</strong> {{ params.currency }}{{ formatNumber(projection[0].totalNetWorth) }}</p>
+					<p><strong>Final Net Worth (Year {{ params.years }}):</strong> {{ params.currency }}{{ formatNumber(projection[projection.length - 1].totalNetWorth) }}</p>
+					<p><strong>Total Growth:</strong> {{ params.currency }}{{ formatNumber(projection[projection.length - 1].totalNetWorth - projection[0].totalNetWorth) }}</p>
 					<p><strong>Total Return:</strong> {{ (((projection[projection.length - 1].totalNetWorth / projection[0].totalNetWorth) - 1) * 100).toFixed(1) }}%</p>
 				</div>
 
 				<!-- Die With Zero Analysis -->
-				<h2>Die With Zero Analysis</h2>
+				<h2>
+					Die With {{ params.currency }}<input
+						type="text"
+						class="inline-input"
+						:value="formatInputNumber(params.targetFinalNetWorth || 0)"
+						@input="updateTargetFinalNetWorth($event.target.value)"
+						placeholder="0"> Analysis
+					<span class="tooltip-icon" :data-tooltip="tooltips.targetFinalNetWorth" style="margin-left: 8px;">?</span>
+				</h2>
 				<div class="key-metrics">
 					<p><strong>If you stop working NOW (year 0):</strong></p>
-					<p style="margin-left: 20px;">Final net worth in year {{ params.years }}: €{{ formatNumber(dieWithZero.stopNow) }}</p>
-					<p style="margin-top: 15px;"><strong>Optimal retirement year to die with zero:</strong></p>
+					<p style="margin-left: 20px;">Final net worth in year {{ params.years }}: {{ params.currency }}{{ formatNumber(dieWithZero.stopNow) }}</p>
+					<p style="margin-top: 15px;"><strong>Optimal retirement year to reach {{ params.currency }}{{ formatNumber(dieWithZero.target) }}:</strong></p>
 					<p v-if="dieWithZero.optimalYear > 0" style="margin-left: 20px;">
 						Stop working at year {{ dieWithZero.optimalYear }}<br>
-						Final net worth in year {{ params.years }}: €{{ formatNumber(dieWithZero.optimalFinalWorth) }}
+						Final net worth in year {{ params.years }}: {{ params.currency }}{{ formatNumber(dieWithZero.optimalFinalWorth) }}
 					</p>
 					<p v-else style="margin-left: 20px; color: #e74c3c;">
-						Cannot reach zero - expenses exceed asset growth even with continued income
+						Cannot reach target - expenses exceed asset growth even with continued income
 					</p>
 				</div>
 
@@ -601,25 +647,25 @@
 						<tbody>
 							<tr v-for="row in projection" :key="row.year">
 								<td>{{ row.year }}</td>
-								<td>€{{ formatNumber(row.grossIncome) }}</td>
-								<td>€{{ formatNumber(row.netIncome) }}</td>
-								<td>€{{ formatNumber(row.baseExpenses) }}</td>
-								<td>€{{ formatNumber(row.additionalExpenses) }}</td>
-								<td>€{{ formatNumber(row.expenses) }}</td>
-								<td>€{{ formatNumber(row.savings) }}</td>
+								<td>{{ params.currency }}{{ formatNumber(row.grossIncome) }}</td>
+								<td>{{ params.currency }}{{ formatNumber(row.netIncome) }}</td>
+								<td>{{ params.currency }}{{ formatNumber(row.baseExpenses) }}</td>
+								<td>{{ params.currency }}{{ formatNumber(row.additionalExpenses) }}</td>
+								<td>{{ params.currency }}{{ formatNumber(row.expenses) }}</td>
+								<td :class="row.savings > 0 ? 'positive-savings' : (row.savings < 0 ? 'negative-savings' : '')">{{ params.currency }}{{ formatNumber(Math.abs(row.savings)) }}</td>
 								<td v-for="asset in params.assets" :key="asset.name">
-									<div>€{{ formatNumber(row.assets[asset.name] || 0) }}</div>
+									<div>{{ params.currency }}{{ formatNumber(row.assets[asset.name] || 0) }}</div>
 									<div v-if="row.year > 0 && (row.assetAppreciation[asset.name] > 0 || row.assetContributions[asset.name] > 0 || row.assetLosses[asset.name] > 0)" class="asset-changes">
-										<span v-if="row.assetAppreciation[asset.name] > 0" class="appreciation">↑€{{ formatNumber(row.assetAppreciation[asset.name]) }}</span>
-										<span v-if="row.assetContributions[asset.name] > 0" class="contribution">↑↑€{{ formatNumber(row.assetContributions[asset.name]) }}</span>
-										<span v-if="row.assetLosses[asset.name] > 0" class="loss">↓€{{ formatNumber(row.assetLosses[asset.name]) }}</span>
+										<span v-if="row.assetAppreciation[asset.name] > 0" class="appreciation">↑{{ params.currency }}{{ formatNumber(row.assetAppreciation[asset.name]) }}</span>
+										<span v-if="row.assetContributions[asset.name] > 0" class="contribution">↑↑{{ params.currency }}{{ formatNumber(row.assetContributions[asset.name]) }}</span>
+										<span v-if="row.assetLosses[asset.name] > 0" class="loss">↓{{ params.currency }}{{ formatNumber(row.assetLosses[asset.name]) }}</span>
 									</div>
 								</td>
 								<td>
-									<div><strong>€{{ formatNumber(row.totalNetWorth) }}</strong></div>
+									<div><strong>{{ params.currency }}{{ formatNumber(row.totalNetWorth) }}</strong></div>
 									<div v-if="row.year > 0 && row.netWorthChange !== 0" class="asset-changes">
 										<span :class="row.netWorthChange > 0 ? 'gain' : 'loss'">
-											{{ row.netWorthChange > 0 ? '↑' : '↓' }}€{{ formatNumber(Math.abs(row.netWorthChange)) }}
+											{{ row.netWorthChange > 0 ? '↑' : '↓' }}{{ params.currency }}{{ formatNumber(Math.abs(row.netWorthChange)) }}
 										</span>
 									</div>
 								</td>
@@ -644,6 +690,7 @@
 
 		// Example data (safe to share with others)
 		const EXAMPLE_DATA = {
+			currency: '€',
 			annualGrossIncome: 80000,
 			annualExpenses: 40000,
 			years: 40,
@@ -662,7 +709,8 @@
 				{ name: 'Crypto', amount: 50000, rate: 6, liquid: true },
 				{ name: 'Real Estate', amount: 400000, rate: 1, liquid: false }
 			],
-			milestones: [500 * K, M]
+			milestones: [500 * K, M],
+			targetFinalNetWorth: 0
 		};
 
 		// ============================================================================
@@ -680,6 +728,7 @@
 			returnRate: "Expected annual return/appreciation rate for this asset.",
 			liquid: "Can this asset be sold/liquidated to cover expenses? (Yes for stocks/crypto, No for primary residence)",
 			milestones: "Net worth goals to track. The table shows which milestones haven't been reached yet.",
+			targetFinalNetWorth: "The target net worth you want to have at the end of the projection period. Set to 0 to 'die with zero', or any amount you want to leave behind or have as a safety buffer.",
 			yearlyBreakdown: "Year 0 represents your starting point (no savings or gains yet). From year 1 onwards, each asset column shows the current value with: appreciation (green ↑) from growth rate, contributions (lighter green ↑↑) from your savings (only liquid assets), and losses (red ↓) from liquidation to cover expenses. Total Net Worth shows the net change (green/red ↑/↓) from the previous year."
 		};
 
@@ -700,19 +749,21 @@
 					return this.calculateProjection();
 				},
 				dieWithZero() {
+					const target = this.params.targetFinalNetWorth || 0;
+
 					// Calculate if you stop working now
 					const stopNowProjection = this.calculateProjectionWithZeroIncome(0);
 					const stopNow = stopNowProjection[stopNowProjection.length - 1].totalNetWorth;
 
-					// Find optimal retirement year
+					// Find optimal retirement year to reach target
 					let bestYear = 0;
-					let bestDiff = Math.abs(stopNow);
+					let bestDiff = Math.abs(stopNow - target);
 					let optimalFinalWorth = stopNow;
 
 					for (let retireYear = 1; retireYear <= this.params.years; retireYear++) {
 						const projection = this.calculateProjectionWithZeroIncome(retireYear);
 						const finalWorth = projection[projection.length - 1].totalNetWorth;
-						const diff = Math.abs(finalWorth);
+						const diff = Math.abs(finalWorth - target);
 
 						if (diff < bestDiff) {
 							bestDiff = diff;
@@ -720,8 +771,8 @@
 							optimalFinalWorth = finalWorth;
 						}
 
-						// If net worth goes negative, we've gone too far
-						if (finalWorth < 0) {
+						// If net worth goes too negative, we've gone too far
+						if (finalWorth < target - Math.abs(target)) {
 							break;
 						}
 					}
@@ -729,7 +780,8 @@
 					return {
 						stopNow,
 						optimalYear: bestYear,
-						optimalFinalWorth
+						optimalFinalWorth,
+						target
 					};
 				}
 			},
@@ -763,6 +815,9 @@
 					if (this.chartInstance) {
 						this.chartInstance.resetZoom();
 					}
+				},
+				updateTargetFinalNetWorth(value) {
+					this.params.targetFinalNetWorth = this.parseInputNumber(value);
 				},
 				saveParameters() {
 					// Create a JSON string of the current parameters
@@ -856,6 +911,9 @@
 						maximumFractionDigits: 0
 					}).format(num);
 				},
+				formatCurrency(num) {
+					return this.params.currency + this.formatNumber(num);
+				},
 				formatInputNumber(num) {
 					if (num === 0 || num === '') return '';
 					return new Intl.NumberFormat('en-US').format(num);
@@ -866,8 +924,14 @@
 					const parsed = parseFloat(cleaned);
 					return isNaN(parsed) ? 0 : parsed;
 				},
-				calculateProjectionWithZeroIncome(startYear) {
-					// Calculate projection with income set to zero from startYear onwards
+				_projectBase(options = {}) {
+					// Base projection function that both calculateProjection and calculateProjectionWithZeroIncome use
+					const {
+						zeroIncomeFromYear = null,
+						trackMilestones = false,
+						trackGainsLosses = false
+					} = options;
+
 					const results = [];
 					const p = this.params;
 
@@ -877,9 +941,17 @@
 					const assets = {};
 					p.assets.forEach(a => assets[a.name] = a.amount);
 
+					// Track milestones if requested
+					const milestonesReached = trackMilestones ? {} : null;
+					if (trackMilestones) {
+						p.milestones.forEach(m => milestonesReached[m] = null);
+					}
+
+					let previousNetWorth = null;
+
 					for (let year = 0; year <= p.years; year++) {
-						// Set income to zero after startYear
-						if (year >= startYear) {
+						// Set income to zero after zeroIncomeFromYear if specified
+						if (zeroIncomeFromYear !== null && year >= zeroIncomeFromYear) {
 							currentGrossIncome = 0;
 						}
 
@@ -890,126 +962,75 @@
 						const totalNetWorth = Object.values(assets).reduce((sum, val) => sum + val, 0);
 						const annualSavings = year > 0 ? currentNetIncome - totalExpenses : 0;
 
-						results.push({
-							year,
-							totalNetWorth
-						});
+						// Calculate net worth change
+						const netWorthChange = previousNetWorth !== null ? totalNetWorth - previousNetWorth : 0;
+
+						// Check milestones if tracking
+						if (trackMilestones) {
+							for (const milestone of p.milestones) {
+								if (milestonesReached[milestone] === null && totalNetWorth >= milestone) {
+									milestonesReached[milestone] = year;
+								}
+							}
+						}
+
+						// Build result object
+						const result = { year, totalNetWorth };
+
+						if (trackGainsLosses) {
+							// Get unrealized milestones
+							const unrealized = p.milestones
+								.filter(m => milestonesReached[m] === null)
+								.map(m => '€' + (m / 1000000).toFixed(1) + 'M')
+								.join(', ');
+
+							// Initialize gain/loss tracking for this year
+							const assetAppreciation = {};
+							const assetContributions = {};
+							const assetLosses = {};
+							p.assets.forEach(a => {
+								assetAppreciation[a.name] = 0;
+								assetContributions[a.name] = 0;
+								assetLosses[a.name] = 0;
+							});
+
+							result.grossIncome = currentGrossIncome;
+							result.netIncome = currentNetIncome;
+							result.baseExpenses = currentExpenses;
+							result.additionalExpenses = additionalExpense.amount;
+							result.expenses = totalExpenses;
+							result.savings = annualSavings;
+							result.assets = { ...assets };
+							result.assetAppreciation = { ...assetAppreciation };
+							result.assetContributions = { ...assetContributions };
+							result.assetLosses = { ...assetLosses };
+							result.netWorthChange = netWorthChange;
+							result.unrealizedMilestones = unrealized || 'All reached!';
+						}
+
+						results.push(result);
+						previousNetWorth = totalNetWorth;
 
 						// Project to next year
 						if (year < p.years) {
-							// Increase income due to growth rate (only if not yet at startYear)
-							if (year < startYear - 1) {
+							// Increase income due to growth rate (only if not yet at zeroIncomeFromYear)
+							if (zeroIncomeFromYear === null || year < zeroIncomeFromYear - 1) {
 								currentGrossIncome *= 1 + (p.incomeGrowthRate / 100);
 							}
 
 							currentExpenses *= 1 + (p.inflationRate / 100);
 
-							// Handle savings/liquidation
-							if (annualSavings > 0) {
-								const liquidAssets = p.assets.filter(a => a.liquid);
-								const totalLiquid = liquidAssets.reduce((sum, a) => sum + assets[a.name], 0);
-
-								if (totalLiquid > 0) {
-									liquidAssets.forEach(asset => {
-										const proportion = assets[asset.name] / totalLiquid;
-										assets[asset.name] += annualSavings * proportion;
-									});
-								}
-							} else if (annualSavings < 0) {
-								const liquidAssets = p.assets.filter(a => a.liquid);
-								const totalLiquid = liquidAssets.reduce((sum, a) => sum + assets[a.name], 0);
-
-								if (totalLiquid > 0) {
-									const amountToLiquidate = Math.abs(annualSavings);
-									liquidAssets.forEach(asset => {
-										const proportion = assets[asset.name] / totalLiquid;
-										assets[asset.name] -= amountToLiquidate * proportion;
-									});
-								}
+							// Track gains/losses for this year if requested
+							const assetGains = {};
+							const assetContributions = {};
+							const assetLosses = {};
+							if (trackGainsLosses) {
+								p.assets.forEach(a => {
+									assetGains[a.name] = 0;
+									assetContributions[a.name] = 0;
+									assetLosses[a.name] = 0;
+								});
 							}
-
-							// Apply appreciation rates
-							p.assets.forEach(asset => {
-								assets[asset.name] *= 1 + (asset.rate / 100);
-							});
-						}
-					}
-
-					return results;
-				},
-				calculateProjection() {
-					const results = [];
-					const p = this.params;
-
-					// Initialize
-					let currentGrossIncome = p.annualGrossIncome;
-					let currentExpenses = p.annualExpenses;
-					const assets = {};
-					p.assets.forEach(a => assets[a.name] = a.amount);
-
-					// Track milestones
-					const milestonesReached = {};
-					p.milestones.forEach(m => milestonesReached[m] = null);
-
-					let previousNetWorth = null;
-
-					for (let year = 0; year <= p.years; year++) {
-						const taxRate = this.getTaxRateForYear(year);
-						const additionalExpense = this.getAdditionalExpenseForYear(year);
-						const totalExpenses = currentExpenses + additionalExpense.amount;
-						const currentNetIncome = currentGrossIncome * (1 - taxRate);
-						const totalNetWorth = Object.values(assets).reduce((sum, val) => sum + val, 0);
-						const annualSavings = year > 0 ? currentNetIncome - totalExpenses : 0;
-
-						// Calculate net worth change
-						const netWorthChange = previousNetWorth !== null ? totalNetWorth - previousNetWorth : 0;
-
-						// Check milestones
-						for (const milestone of p.milestones) {
-							if (milestonesReached[milestone] === null && totalNetWorth >= milestone) {
-								milestonesReached[milestone] = year;
-							}
-						}
-
-						// Get unrealized milestones
-						const unrealized = p.milestones
-							.filter(m => milestonesReached[m] === null)
-							.map(m => '€' + (m / 1000000).toFixed(1) + 'M')
-							.join(', ');
-
-						// Initialize gain/loss tracking for this year
-						const assetAppreciation = {};
-						const assetContributions = {};
-						const assetLosses = {};
-						p.assets.forEach(a => {
-							assetAppreciation[a.name] = 0;
-							assetContributions[a.name] = 0;
-							assetLosses[a.name] = 0;
-						});
-
-						results.push({
-							year,
-							grossIncome: currentGrossIncome,
-							netIncome: currentNetIncome,
-							baseExpenses: currentExpenses,
-							additionalExpenses: additionalExpense.amount,
-							expenses: totalExpenses,
-							savings: annualSavings,
-							assets: { ...assets },
-							assetAppreciation: { ...assetAppreciation },
-							assetContributions: { ...assetContributions },
-							assetLosses: { ...assetLosses },
-							totalNetWorth,
-							netWorthChange,
-							unrealizedMilestones: unrealized || 'All reached!'
-						});
-
-						previousNetWorth = totalNetWorth;
-
-						// Project to next year
-						if (year < p.years) {
-							currentGrossIncome *= 1 + (p.incomeGrowthRate / 100);
-							currentExpenses *= 1 + (p.inflationRate / 100);
 
 							// Handle savings/liquidation
 							if (annualSavings > 0) {
@@ -1021,7 +1042,9 @@
 										const proportion = assets[asset.name] / totalLiquid;
 										const contribution = annualSavings * proportion;
 										assets[asset.name] += contribution;
-										assetContributions[asset.name] += contribution;
+										if (trackGainsLosses) {
+											assetContributions[asset.name] += contribution;
+										}
 									});
 								}
 							} else if (annualSavings < 0) {
@@ -1034,7 +1057,9 @@
 										const proportion = assets[asset.name] / totalLiquid;
 										const liquidation = amountToLiquidate * proportion;
 										assets[asset.name] -= liquidation;
-										assetLosses[asset.name] += liquidation;
+										if (trackGainsLosses) {
+											assetLosses[asset.name] += liquidation;
+										}
 									});
 								}
 							}
@@ -1043,17 +1068,35 @@
 							p.assets.forEach(asset => {
 								const appreciation = assets[asset.name] * (asset.rate / 100);
 								assets[asset.name] *= 1 + (asset.rate / 100);
-								assetAppreciation[asset.name] += appreciation;
+								if (trackGainsLosses) {
+									assetGains[asset.name] += appreciation;
+								}
 							});
 
 							// Update the current year's data with the gains/losses
-							results[results.length - 1].assetAppreciation = { ...assetAppreciation };
-							results[results.length - 1].assetContributions = { ...assetContributions };
-							results[results.length - 1].assetLosses = { ...assetLosses };
+							if (trackGainsLosses) {
+								results[results.length - 1].assetAppreciation = { ...assetGains };
+								results[results.length - 1].assetContributions = { ...assetContributions };
+								results[results.length - 1].assetLosses = { ...assetLosses };
+							}
 						}
 					}
 
 					return results;
+				},
+				calculateProjectionWithZeroIncome(startYear) {
+					return this._projectBase({
+						zeroIncomeFromYear: startYear,
+						trackMilestones: false,
+						trackGainsLosses: false
+					});
+				},
+				calculateProjection() {
+					return this._projectBase({
+						zeroIncomeFromYear: null,
+						trackMilestones: true,
+						trackGainsLosses: true
+					});
 				},
 				updateChart() {
 					if (!this.$refs.chart) return;
