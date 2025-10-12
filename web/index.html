@@ -479,7 +479,7 @@
 				<span class="tooltip-icon" :data-tooltip="tooltips.taxRateSchedule" style="margin-left: 8px;">?</span>
 			</h2>
 			<div v-for="(taxRate, index) in params.taxRates" :key="index" class="asset-group">
-				<div class="asset-grid" style="grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;">
+				<div class="asset-grid" style="grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr) auto;">
 					<div class="form-group">
 						<label>Starting Year</label>
 						<input type="number" v-model.number="taxRate.year" min="0">
@@ -487,6 +487,10 @@
 					<div class="form-group">
 						<label>Tax Rate (%)</label>
 						<input type="number" v-model.number="taxRate.rate" step="0.1" min="0" max="100">
+					</div>
+					<div class="form-group">
+						<label>Est. Net Income</label>
+						<input type="text" :value="formatCurrency(getEstimatedIncomeForTaxRate(taxRate))" readonly>
 					</div>
 					<button class="remove" @click="removeTaxRate(index)" v-if="params.taxRates.length > 1">×</button>
 				</div>
@@ -923,6 +927,13 @@
 					const cleaned = value.replace(/[^\d.]/g, '');
 					const parsed = parseFloat(cleaned);
 					return isNaN(parsed) ? 0 : parsed;
+				},
+				getEstimatedIncomeForTaxRate(taxRate) {
+					// Calculate gross income at the year this tax rate starts
+					const grossIncome = this.params.annualGrossIncome * Math.pow(1 + this.params.incomeGrowthRate / 100, taxRate.year);
+					// Apply tax to get net income
+					const netIncome = grossIncome * (1 - taxRate.rate / 100);
+					return netIncome;
 				},
 				_projectBase(options = {}) {
 					// Base projection function that both calculateProjection and calculateProjectionWithZeroIncome use
