@@ -27,6 +27,7 @@ import type {
 // TODO: use validation of income/tax/expense in the UI
 // TODO: year 0 calculation is still a bit off
 // TODO: die with zero calculation is off
+// TODO: years is duplicate in overall config and individual income/expense/tax
 
 // Register Chart.js components
 Chart.register(...registerables, annotationPlugin, zoomPlugin);

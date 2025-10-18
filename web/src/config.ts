@@ -29,7 +29,7 @@ export const EXAMPLE_DATA: FinancialParams = {
 		years: 40,
 		payload: [
 			{ from: 0, rate: 0.20 },
-			{ from: 10, rate: 0.50 },
+			{ from: 10, rate: 0.40 },
 			{ from: 20, rate: 1.00 }
 		]
 	},
