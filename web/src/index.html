@@ -9,6 +9,7 @@
 	<script src="https://cdn.tailwindcss.com"></script>
 	<script>
 		tailwind.config = {
+			darkMode: 'class',
 			theme: {
 				extend: {
 					colors: {
@@ -23,30 +24,6 @@
 	</script>
 
 	<style>
-		/* Custom CSS for dark theme */
-		body.dark-theme {
-			background-color: #1a202c;
-			color: #e2e8f0;
-		}
-
-		body.dark-theme .bg-white { background-color: #1a202c !important; }
-		body.dark-theme .bg-gray-50 { background-color: #2d3748 !important; }
-		body.dark-theme .bg-gray-100 { background-color: #2d3748 !important; }
-		body.dark-theme .bg-gray-700 { background-color: #1a202c !important; }
-		body.dark-theme .text-gray-800 { color: #e2e8f0 !important; }
-		body.dark-theme .text-gray-600 { color: #a0aec0 !important; }
-		body.dark-theme .border-gray-200 { border-color: #4a5568 !important; }
-		body.dark-theme .border-gray-300 { border-color: #4a5568 !important; }
-		body.dark-theme input, body.dark-theme select, body.dark-theme .bg-white {
-			background-color: #2d3748 !important;
-			color: #e2e8f0 !important;
-			border-color: #4a5568 !important;
-		}
-		body.dark-theme table { background-color: #1a202c !important; }
-		body.dark-theme th { background-color: #2d3748 !important; color: #e2e8f0 !important; }
-		body.dark-theme td { color: #e2e8f0 !important; border-color: #4a5568 !important; }
-		body.dark-theme tr:hover { background-color: #2d3748 !important; }
-
 		/* Minimal custom styles for things Tailwind doesn't cover well */
 		.tooltip-popup {
 			position: fixed;

@@ -96,7 +96,7 @@ const app = createApp(defineComponent({
 		},
 		toggleTheme() {
 			this.darkTheme = !this.darkTheme;
-			document.body.classList.toggle('dark-theme', this.darkTheme);
+			document.documentElement.classList.toggle('dark', this.darkTheme);
 			// Update chart to match new theme
 			this.$nextTick(() => {
 				this.updateChart();
@@ -421,7 +421,7 @@ const app = createApp(defineComponent({
 			} as any);
 
 			// Get theme colors
-			const isDark = document.body.classList.contains('dark-theme');
+			const isDark = document.documentElement.classList.contains('dark');
 			const textColor = isDark ? '#e0e0e0' : '#666';
 			const gridColor = isDark ? '#404040' : '#e0e0e0';
 
@@ -535,7 +535,7 @@ const app = createApp(defineComponent({
 	},
 	mounted() {
 		// Apply dark theme on load
-		document.body.classList.toggle('dark-theme', this.darkTheme);
+		document.documentElement.classList.toggle('dark', this.darkTheme);
 
 		this.$nextTick(() => {
 			this.updateChart();

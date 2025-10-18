@@ -75,7 +75,3 @@ The GitHub Actions workflow automatically:
 - 💾 Save/load parameters as JSON
 - 🌙 Dark/light theme toggle
 - 📱 Responsive design
-
-## Configuration
-
-See `configs/example.json` for an example configuration file that can be loaded into the app.
