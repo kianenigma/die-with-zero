@@ -24,6 +24,10 @@ import type {
 	TaxType
 } from './types';
 
+// TODO: use validation of income/tax/expense in the UI
+// TODO: year 0 calculation is still a bit off
+// TODO: die with zero calculation is off
+
 // Register Chart.js components
 Chart.register(...registerables, annotationPlugin, zoomPlugin);
 
