@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Die With Zero - Financial Planner</title>
+
+	<!-- Tailwind CSS -->
+	<script src="https://cdn.tailwindcss.com"></script>
+	<script>
+		tailwind.config = {
+			theme: {
+				extend: {
+					colors: {
+						primary: '#3498db',
+						secondary: '#2980b9',
+						danger: '#e74c3c',
+						dangerHover: '#c0392b',
+					}
+				}
+			}
+		}
+	</script>
+
+	<style>
+		/* Custom CSS for dark theme */
+		body.dark-theme {
+			background-color: #1a202c;
+			color: #e2e8f0;
+		}
+
+		body.dark-theme .bg-white { background-color: #1a202c !important; }
+		body.dark-theme .bg-gray-50 { background-color: #2d3748 !important; }
+		body.dark-theme .bg-gray-100 { background-color: #2d3748 !important; }
+		body.dark-theme .bg-gray-700 { background-color: #1a202c !important; }
+		body.dark-theme .text-gray-800 { color: #e2e8f0 !important; }
+		body.dark-theme .text-gray-600 { color: #a0aec0 !important; }
+		body.dark-theme .border-gray-200 { border-color: #4a5568 !important; }
+		body.dark-theme .border-gray-300 { border-color: #4a5568 !important; }
+		body.dark-theme input, body.dark-theme select, body.dark-theme .bg-white {
+			background-color: #2d3748 !important;
+			color: #e2e8f0 !important;
+			border-color: #4a5568 !important;
+		}
+		body.dark-theme table { background-color: #1a202c !important; }
+		body.dark-theme th { background-color: #2d3748 !important; color: #e2e8f0 !important; }
+		body.dark-theme td { color: #e2e8f0 !important; border-color: #4a5568 !important; }
+		body.dark-theme tr:hover { background-color: #2d3748 !important; }
+
+		/* Minimal custom styles for things Tailwind doesn't cover well */
+		.tooltip-popup {
+			position: fixed;
+			background: #2c3e50;
+			color: white;
+			padding: 8px 12px;
+			border-radius: 4px;
+			font-size: 12px;
+			font-weight: normal;
+			white-space: normal;
+			z-index: 999999;
+			max-width: 350px;
+			width: max-content;
+			box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+			pointer-events: none;
+			display: none;
+		}
+
+		.tooltip-popup::before {
+			content: '';
+			position: absolute;
+			border: 6px solid transparent;
+			border-right-color: #2c3e50;
+			left: -12px;
+			top: 50%;
+			transform: translateY(-50%);
+		}
+
+		.sidebar.collapsed {
+			flex: 0 0 0;
+			padding: 0;
+			overflow: hidden;
+			opacity: 0;
+			border-right: none;
+		}
+	</style>
+</head>
+<body>
+	<div class="tooltip-popup" id="tooltip"></div>
+	<div id="app">
+		<div class="flex h-screen bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200">
+			<!-- Sidebar with Parameters -->
+			<div class="sidebar flex-[0_0_33.333%] p-5 overflow-y-auto border-r-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 relative z-[100] transition-all duration-300" :class="{ collapsed: sidebarCollapsed }">
+				<h1 class="text-gray-800 dark:text-gray-200 mb-4 text-2xl font-bold">Die With Zero - Financial Planner</h1>
+
+				<!-- Save/Load Controls -->
+				<div class="flex gap-2.5 mb-5 items-center">
+					<button class="bg-primary hover:bg-secondary text-white px-3 py-2 rounded cursor-pointer text-sm flex items-center gap-1.5" @click="saveParameters">
+						💾 Save Parameters
+					</button>
+					<button class="bg-primary hover:bg-secondary text-white px-3 py-2 rounded cursor-pointer text-sm flex items-center gap-1.5" @click="$refs.fileInput.click()">
+						📂 Load Parameters
+					</button>
+					<input type="file" ref="fileInput" @change="loadParameters" accept=".json" class="hidden">
+				</div>
+
+				<!-- Basic Parameters -->
+			<h2 class="text-gray-800 dark:text-gray-200 my-5 text-lg font-semibold border-b border-primary pb-1.5">Basic Parameters</h2>
+			<div class="grid grid-cols-3 gap-2.5 mb-4">
+				<div class="flex flex-col">
+					<div class="flex items-center gap-1.5">
+						<label class="font-semibold mb-1 text-gray-600 dark:text-gray-400 text-sm">Inflation Rate (%)</label>
+						<span class="tooltip-icon inline-flex items-center justify-center w-3 h-3 rounded-full bg-gray-400 text-white text-[8px] font-normal cursor-help opacity-60 hover:opacity-100" :data-tooltip="tooltips.inflationRate">?</span>
+					</div>
+					<input type="number" v-model.number="params.inflationRate" step="0.1"
+						class="px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm min-w-0 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:border-primary">
+				</div>
+				<div class="flex flex-col">
+					<div class="flex items-center gap-1.5">
+						<label class="font-semibold mb-1 text-gray-600 dark:text-gray-400 text-sm">Projection Years</label>
+						<span class="tooltip-icon inline-flex items-center justify-center w-3 h-3 rounded-full bg-gray-400 text-white text-[8px] font-normal cursor-help opacity-60 hover:opacity-100" :data-tooltip="tooltips.projectionYears">?</span>
+					</div>
+					<input type="number" v-model.number="params.years" min="1" max="100"
+						class="px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm min-w-0 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:border-primary">
+				</div>
+				<div class="flex flex-col">
+					<label class="font-semibold mb-1 text-gray-600 dark:text-gray-400 text-sm">Currency</label>
+					<select v-model="params.currency"
+						class="px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm min-w-0 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:border-primary">
+						<option value="$">$ (USD)</option>
+						<option value="€">€ (EUR)</option>
+						<option value="£">£ (GBP)</option>
+						<option value="¥">¥ (JPY/CNY)</option>
+						<option value="₹">₹ (INR)</option>
+						<option value="₿">₿ (BTC)</option>
+					</select>
+				</div>
+			</div>
+
+			<!-- Income Parameters -->
+			<h2 class="text-gray-800 dark:text-gray-200 my-5 text-lg font-semibold border-b border-primary pb-1.5">Income Parameters</h2>
+			<div class="grid grid-cols-2 gap-2.5 mb-4">
+				<div class="flex flex-col">
+					<div class="flex items-center gap-1.5">
+						<label class="font-semibold mb-1 text-gray-600 dark:text-gray-400 text-sm">Annual Gross Income ({{ params.currency }})</label>
+						<span class="tooltip-icon inline-flex items-center justify-center w-3 h-3 rounded-full bg-gray-400 text-white text-[8px] font-normal cursor-help opacity-60 hover:opacity-100" :data-tooltip="tooltips.annualGrossIncome">?</span>
+					</div>
+					<input type="text"
+						class="px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm min-w-0 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:border-primary"
+						:value="formatInputNumber(params.annualGrossIncome)"
+						@input="params.annualGrossIncome = parseInputNumber($event.target.value)">
+				</div>
+				<div class="flex flex-col">
+					<div class="flex items-center gap-1.5">
+						<label class="font-semibold mb-1 text-gray-600 dark:text-gray-400 text-sm">Income Growth Rate (%)</label>
+						<span class="tooltip-icon inline-flex items-center justify-center w-3 h-3 rounded-full bg-gray-400 text-white text-[8px] font-normal cursor-help opacity-60 hover:opacity-100" :data-tooltip="tooltips.incomeGrowthRate">?</span>
+					</div>
+					<input type="number" v-model.number="params.incomeGrowthRate" step="0.1"
+						class="px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm min-w-0 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:border-primary">
+				</div>
+			</div>
+
+			<!-- Expense Parameters -->
+			<h2 class="text-gray-800 dark:text-gray-200 my-5 text-lg font-semibold border-b border-primary pb-1.5">Expense Parameters</h2>
+			<div class="grid grid-cols-1 gap-2.5 mb-4">
+				<div class="flex flex-col">
+					<div class="flex items-center gap-1.5">
+						<label class="font-semibold mb-1 text-gray-600 dark:text-gray-400 text-sm">Annual Expenses ({{ params.currency }})</label>
+						<span class="tooltip-icon inline-flex items-center justify-center w-3 h-3 rounded-full bg-gray-400 text-white text-[8px] font-normal cursor-help opacity-60 hover:opacity-100" :data-tooltip="tooltips.annualExpenses">?</span>
+					</div>
+					<input type="text"
+						class="px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm min-w-0 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:border-primary"
+						:value="formatInputNumber(params.annualExpenses)"
+						@input="params.annualExpenses = parseInputNumber($event.target.value)">
+				</div>
+			</div>
+
+			<!-- Tax Rates Schedule -->
+			<h2 class="text-gray-800 dark:text-gray-200 my-5 text-lg font-semibold border-b border-primary pb-1.5">
+				Tax Rate Schedule
+				<span class="tooltip-icon inline-flex items-center justify-center w-3 h-3 rounded-full bg-gray-400 text-white text-[8px] font-normal cursor-help opacity-60 hover:opacity-100 ml-2" :data-tooltip="tooltips.taxRateSchedule">?</span>
+			</h2>
+			<div v-for="(taxRate, index) in params.taxRates" :key="index" class="border border-gray-200 dark:border-gray-600 p-2 rounded mb-2 bg-white dark:bg-gray-700">
+				<div class="grid gap-1.5 items-end" style="grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr) auto;">
+					<div class="flex flex-col min-w-0">
+						<label class="font-semibold mb-1 text-gray-600 dark:text-gray-400 text-sm">Starting Year</label>
+						<input type="number" v-model.number="taxRate.year" min="0"
+							class="px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm min-w-0 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:border-primary">
+					</div>
+					<div class="flex flex-col min-w-0">
+						<label class="font-semibold mb-1 text-gray-600 dark:text-gray-400 text-sm">Tax Rate (%)</label>
+						<input type="number" v-model.number="taxRate.rate" step="0.1" min="0" max="100"
+							class="px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm min-w-0 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:border-primary">
+					</div>
+					<div class="flex flex-col min-w-0">
+						<label class="font-semibold mb-1 text-gray-600 dark:text-gray-400 text-sm">Est. Net Income</label>
+						<input type="text" :value="formatCurrency(getEstimatedIncomeForTaxRate(taxRate))" readonly
+							class="px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm min-w-0 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:border-primary">
+					</div>
+					<button class="bg-danger hover:bg-dangerHover text-white px-2.5 py-1.5 rounded cursor-pointer text-sm mt-0" @click="removeTaxRate(index)" v-if="params.taxRates.length > 1">×</button>
+				</div>
+			</div>
+			<button @click="addTaxRate" class="bg-primary hover:bg-secondary text-white px-3 py-1.5 rounded cursor-pointer text-sm mt-1.5">+ Add Tax Rate</button>
+
+			<!-- Assets -->
+			<h2 class="text-gray-800 dark:text-gray-200 my-5 text-lg font-semibold border-b border-primary pb-1.5">
+				Asset Allocation
+				<span class="tooltip-icon inline-flex items-center justify-center w-3 h-3 rounded-full bg-gray-400 text-white text-[8px] font-normal cursor-help opacity-60 hover:opacity-100 ml-2" :data-tooltip="tooltips.assetAllocation">?</span>
+			</h2>
+			<div v-for="(asset, index) in params.assets" :key="index" class="border border-gray-200 dark:border-gray-600 p-2 rounded mb-2 bg-white dark:bg-gray-700">
+				<div class="grid gap-1.5 items-end" style="grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) auto;">
+					<div class="flex flex-col min-w-0">
+						<label class="font-semibold mb-1 text-gray-600 dark:text-gray-400 text-sm">Asset Name</label>
+						<input type="text" v-model="asset.name"
+							class="px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm min-w-0 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:border-primary">
+					</div>
+					<div class="flex flex-col min-w-0">
+						<label class="font-semibold mb-1 text-gray-600 dark:text-gray-400 text-sm">Amount ({{ params.currency }})</label>
+						<input type="text"
+							class="px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm min-w-0 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:border-primary"
+							:value="formatInputNumber(asset.amount)"
+							@input="asset.amount = parseInputNumber($event.target.value)">
+					</div>
+					<div class="flex flex-col min-w-0">
+						<div class="flex items-center gap-1.5">
+							<label class="font-semibold mb-1 text-gray-600 dark:text-gray-400 text-sm">Return Rate (%)</label>
+							<span class="tooltip-icon inline-flex items-center justify-center w-3 h-3 rounded-full bg-gray-400 text-white text-[8px] font-normal cursor-help opacity-60 hover:opacity-100" :data-tooltip="tooltips.returnRate">?</span>
+						</div>
+						<input type="number" v-model.number="asset.rate" step="0.1"
+							class="px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm min-w-0 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:border-primary">
+					</div>
+					<div class="flex flex-col min-w-0">
+						<div class="flex items-center gap-1.5">
+							<label class="font-semibold mb-1 text-gray-600 dark:text-gray-400 text-sm">Liquid?</label>
+							<span class="tooltip-icon inline-flex items-center justify-center w-3 h-3 rounded-full bg-gray-400 text-white text-[8px] font-normal cursor-help opacity-60 hover:opacity-100" :data-tooltip="tooltips.liquid">?</span>
+						</div>
+						<select v-model="asset.liquid"
+							class="px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm min-w-0 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:border-primary">
+							<option :value="true">Yes</option>
+							<option :value="false">No</option>
+						</select>
+					</div>
+					<button class="bg-danger hover:bg-dangerHover text-white px-2.5 py-1.5 rounded cursor-pointer text-sm mt-0" @click="removeAsset(index)" v-if="params.assets.length > 1">×</button>
+				</div>
+			</div>
+			<button @click="addAsset" class="bg-primary hover:bg-secondary text-white px-3 py-1.5 rounded cursor-pointer text-sm mt-1.5">+ Add Asset</button>
+
+			<!-- Milestones -->
+			<h2 class="text-gray-800 dark:text-gray-200 my-5 text-lg font-semibold border-b border-primary pb-1.5">
+				Milestones
+				<span class="tooltip-icon inline-flex items-center justify-center w-3 h-3 rounded-full bg-gray-400 text-white text-[8px] font-normal cursor-help opacity-60 hover:opacity-100 ml-2" :data-tooltip="tooltips.milestones">?</span>
+			</h2>
+			<div class="grid grid-cols-2 gap-1.5 mb-2.5">
+				<div v-for="(milestone, index) in params.milestones" :key="index" class="flex gap-1.5 items-center">
+					<input type="text"
+						class="flex-1 px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm min-w-0 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:border-primary"
+						:value="formatInputNumber(params.milestones[index])"
+						@input="params.milestones[index] = parseInputNumber($event.target.value)"
+						placeholder="Milestone amount (€)">
+					<button class="bg-danger hover:bg-dangerHover text-white px-2.5 py-1.5 rounded cursor-pointer text-sm" @click="removeMilestone(index)">×</button>
+				</div>
+			</div>
+			<button @click="addMilestone" class="bg-primary hover:bg-secondary text-white px-3 py-1.5 rounded cursor-pointer text-sm">+ Add Milestone</button>
+			</div>
+
+			<!-- Main Content with Results -->
+			<div class="flex-1 p-5 overflow-y-auto relative z-[1]">
+				<div class="flex gap-2.5 mb-4 items-center">
+					<button class="bg-primary hover:bg-secondary text-white px-3 py-2 rounded cursor-pointer text-sm flex items-center gap-1.5" @click="toggleSidebar">
+						{{ sidebarCollapsed ? '→ Show' : '← Hide' }} Parameters
+					</button>
+					<button class="bg-primary hover:bg-secondary text-white px-3 py-2 rounded cursor-pointer text-sm flex items-center gap-1.5" @click="toggleTheme">
+						{{ darkTheme ? '☀️ Light' : '🌙 Dark' }} Theme
+					</button>
+					<button class="bg-primary hover:bg-secondary text-white px-3 py-2 rounded cursor-pointer text-sm flex items-center gap-1.5" @click="resetZoom">
+						🔍 Reset Zoom
+					</button>
+				</div>
+			<div v-if="projection.length > 0">
+				<!-- Key Metrics -->
+				<h2 class="text-gray-800 dark:text-gray-200 my-5 text-lg font-semibold border-b border-primary pb-1.5">Key Metrics</h2>
+				<div class="bg-gray-100 dark:bg-gray-700 p-3 rounded my-4">
+					<p class="my-1.5 text-sm text-gray-800 dark:text-gray-200"><strong class="text-gray-800 dark:text-gray-200">Initial Net Worth:</strong> {{ params.currency }}{{ formatNumber(projection[0].totalNetWorth) }}</p>
+					<p class="my-1.5 text-sm text-gray-800 dark:text-gray-200"><strong class="text-gray-800 dark:text-gray-200">Final Net Worth (Year {{ params.years }}):</strong> {{ params.currency }}{{ formatNumber(projection[projection.length - 1].totalNetWorth) }}</p>
+					<p class="my-1.5 text-sm text-gray-800 dark:text-gray-200"><strong class="text-gray-800 dark:text-gray-200">Total Growth:</strong> {{ params.currency }}{{ formatNumber(projection[projection.length - 1].totalNetWorth - projection[0].totalNetWorth) }}</p>
+					<p class="my-1.5 text-sm text-gray-800 dark:text-gray-200"><strong class="text-gray-800 dark:text-gray-200">Total Return:</strong> {{ (((projection[projection.length - 1].totalNetWorth / projection[0].totalNetWorth) - 1) * 100).toFixed(1) }}%</p>
+				</div>
+
+				<!-- Die With Zero Analysis -->
+				<h2 class="text-gray-800 dark:text-gray-200 my-5 text-lg font-semibold border-b border-primary pb-1.5">
+					Die With {{ params.currency }}<input
+						type="text"
+						class="inline-block w-[100px] px-1.5 py-0.5 border border-gray-300 dark:border-gray-600 rounded text-base bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-right focus:outline-none focus:border-primary"
+						:value="formatInputNumber(params.targetFinalNetWorth || 0)"
+						@input="updateTargetFinalNetWorth($event.target.value)"
+						placeholder="0"> Analysis
+					<span class="tooltip-icon inline-flex items-center justify-center w-3 h-3 rounded-full bg-gray-400 text-white text-[8px] font-normal cursor-help opacity-60 hover:opacity-100 ml-2" :data-tooltip="tooltips.targetFinalNetWorth">?</span>
+				</h2>
+				<div class="bg-gray-100 dark:bg-gray-700 p-3 rounded my-4">
+					<p class="my-1.5 text-sm text-gray-800 dark:text-gray-200"><strong class="text-gray-800 dark:text-gray-200">If you stop working NOW (year 0):</strong></p>
+					<p class="my-1.5 text-sm text-gray-800 dark:text-gray-200 ml-5">Final net worth in year {{ params.years }}: {{ params.currency }}{{ formatNumber(dieWithZero.stopNow) }}</p>
+					<p class="my-1.5 text-sm text-gray-800 dark:text-gray-200 mt-4"><strong class="text-gray-800 dark:text-gray-200">Optimal retirement year to reach {{ params.currency }}{{ formatNumber(dieWithZero.target) }}:</strong></p>
+					<p v-if="dieWithZero.optimalYear > 0" class="my-1.5 text-sm text-gray-800 dark:text-gray-200 ml-5">
+						Stop working at year {{ dieWithZero.optimalYear }}<br>
+						Final net worth in year {{ params.years }}: {{ params.currency }}{{ formatNumber(dieWithZero.optimalFinalWorth) }}
+					</p>
+					<p v-else class="my-1.5 text-sm ml-5 text-danger">
+						Cannot reach target - expenses exceed asset growth even with continued income
+					</p>
+				</div>
+
+				<!-- Chart -->
+				<h2 class="text-gray-800 dark:text-gray-200 my-5 text-lg font-semibold border-b border-primary pb-1.5">Net Worth Projection</h2>
+				<div class="relative h-[400px] my-5">
+					<canvas ref="chart"></canvas>
+				</div>
+
+				<!-- Table -->
+				<h2 class="text-gray-800 dark:text-gray-200 my-5 text-lg font-semibold border-b border-primary pb-1.5">
+					Yearly Breakdown
+					<span class="tooltip-icon inline-flex items-center justify-center w-3 h-3 rounded-full bg-gray-400 text-white text-[8px] font-normal cursor-help opacity-60 hover:opacity-100 ml-2" :data-tooltip="tooltips.yearlyBreakdown">?</span>
+				</h2>
+				<div class="my-5">
+					<table class="w-full border-collapse my-2.5 text-[0.8em]">
+						<thead>
+							<tr>
+								<th class="px-2 py-1.5 text-right border-b border-gray-200 dark:border-gray-600 bg-gray-700 dark:bg-gray-800 text-white dark:text-gray-200 font-semibold sticky top-0">Year</th>
+								<th class="px-2 py-1.5 text-right border-b border-gray-200 dark:border-gray-600 bg-gray-700 dark:bg-gray-800 text-white dark:text-gray-200 font-semibold sticky top-0">Gross Income</th>
+								<th class="px-2 py-1.5 text-right border-b border-gray-200 dark:border-gray-600 bg-gray-700 dark:bg-gray-800 text-white dark:text-gray-200 font-semibold sticky top-0">Tax</th>
+								<th class="px-2 py-1.5 text-right border-b border-gray-200 dark:border-gray-600 bg-gray-700 dark:bg-gray-800 text-white dark:text-gray-200 font-semibold sticky top-0">Net Income</th>
+								<th class="px-2 py-1.5 text-right border-b border-gray-200 dark:border-gray-600 bg-gray-700 dark:bg-gray-800 text-white dark:text-gray-200 font-semibold sticky top-0">Expenses</th>
+								<th class="px-2 py-1.5 text-right border-b border-gray-200 dark:border-gray-600 bg-gray-700 dark:bg-gray-800 text-white dark:text-gray-200 font-semibold sticky top-0">Savings</th>
+								<th v-for="asset in params.assets" :key="asset.name" class="px-2 py-1.5 text-right border-b border-gray-200 dark:border-gray-600 bg-gray-700 dark:bg-gray-800 text-white dark:text-gray-200 font-semibold sticky top-0">{{ asset.name }}</th>
+								<th class="px-2 py-1.5 text-right border-b border-gray-200 dark:border-gray-600 bg-gray-700 dark:bg-gray-800 text-white dark:text-gray-200 font-semibold sticky top-0">Total Net Worth</th>
+								<th class="px-2 py-1.5 text-right border-b border-gray-200 dark:border-gray-600 bg-gray-700 dark:bg-gray-800 text-white dark:text-gray-200 font-semibold sticky top-0">Milestones</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-for="row in projection" :key="row.year" class="hover:bg-gray-100 dark:hover:bg-gray-800">
+								<td class="px-2 py-1.5 text-right border-b border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-200">{{ row.year }}</td>
+								<td class="px-2 py-1.5 text-right border-b border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-200">{{ params.currency }}{{ formatNumber(row.grossIncome) }}</td>
+								<td class="px-2 py-1.5 text-right border-b border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-200">{{ formatNumber(row.tax) }}%</td>
+								<td class="px-2 py-1.5 text-right border-b border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-200">{{ params.currency }}{{ formatNumber(row.netIncome) }}</td>
+								<td class="px-2 py-1.5 text-right border-b border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-200">{{ params.currency }}{{ formatNumber(row.expenses) }}</td>
+								<td class="px-2 py-1.5 text-right border-b border-gray-200 dark:border-gray-600" :class="row.savings > 0 ? 'text-green-600' : (row.savings < 0 ? 'text-danger' : 'text-gray-800 dark:text-gray-200')">{{ params.currency }}{{ formatNumber(Math.abs(row.savings)) }}</td>
+								<td v-for="asset in params.assets" :key="asset.name" class="px-2 py-1.5 text-right border-b border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-200">
+									<div>{{ params.currency }}{{ formatNumber(row.assets[asset.name] || 0) }}</div>
+									<div v-if="row.year > 0 && (row.assetAppreciation[asset.name] > 0 || row.assetContributions[asset.name] > 0 || row.assetLosses[asset.name] > 0)" class="block text-[0.75em] mt-0.5 whitespace-nowrap">
+										<span v-if="row.assetAppreciation[asset.name] > 0" class="text-green-600 mr-2">↑{{ params.currency }}{{ formatNumber(row.assetAppreciation[asset.name]) }}</span>
+										<span v-if="row.assetContributions[asset.name] > 0" class="text-green-500 mr-2">↑↑{{ params.currency }}{{ formatNumber(row.assetContributions[asset.name]) }}</span>
+										<span v-if="row.assetLosses[asset.name] > 0" class="text-danger">↓{{ params.currency }}{{ formatNumber(row.assetLosses[asset.name]) }}</span>
+									</div>
+								</td>
+								<td class="px-2 py-1.5 text-right border-b border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-200">
+									<div><strong>{{ params.currency }}{{ formatNumber(row.totalNetWorth) }}</strong></div>
+									<div v-if="row.year > 0 && row.netWorthChange !== 0" class="block text-[0.75em] mt-0.5 whitespace-nowrap">
+										<span :class="row.netWorthChange > 0 ? 'text-green-600' : 'text-danger'">
+											{{ row.netWorthChange > 0 ? '↑' : '↓' }}{{ params.currency }}{{ formatNumber(Math.abs(row.netWorthChange)) }}
+										</span>
+									</div>
+								</td>
+								<td class="px-2 py-1.5 text-right border-b border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-200">{{ row.unrealizedMilestones }}</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Application JavaScript -->
+	<script type="module" src="./main.ts"></script>
+</body>
+</html>

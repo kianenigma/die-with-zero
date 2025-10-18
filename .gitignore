@@ -3,3 +3,6 @@ venv
 *.csv
 web/configs/*.json
 .vscode
+node_modules
+web/dist
+bun.lockb
