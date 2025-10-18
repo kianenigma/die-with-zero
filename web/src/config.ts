@@ -7,15 +7,33 @@ export const M = 1000 * K;
 // Example data (safe to share with others)
 export const EXAMPLE_DATA: FinancialParams = {
 	currency: '€',
-	annualGrossIncome: 80000,
-	annualExpenses: 40000,
+	currentAge: 30,
+	income: {
+		type: 'fixed',
+		years: 40,
+		payload: {
+			start: 80 * K,
+			growth: 0.03
+		}
+	},
+	expense: {
+		type: 'fixed',
+		years: 40,
+		payload: {
+			start: 40 * K,
+			growth: 0.03
+		}
+	},
+	tax: {
+		type: 'range',
+		years: 40,
+		payload: [
+			{ from: 0, rate: 0.20 },
+			{ from: 10, rate: 0.50 },
+			{ from: 20, rate: 1.00 }
+		]
+	},
 	years: 40,
-	inflationRate: 3,
-	incomeGrowthRate: 3,
-	taxRates: [
-		{ year: 0, rate: 30 },
-		{ year: 20, rate: 100 }
-	],
 	assets: [
 		{ name: 'ETFs', amount: 200000, rate: 4, liquid: true },
 		{ name: 'Crypto', amount: 50000, rate: 6, liquid: true },
@@ -27,12 +45,20 @@ export const EXAMPLE_DATA: FinancialParams = {
 
 // Tooltip descriptions
 export const TOOLTIPS: Record<string, string> = {
-	inflationRate: "Annual inflation rate applied to your expenses. If 2%, your expenses increase 2% per year.",
+	currentAge: "Your current age. This will be displayed alongside the year number in the projection table.",
 	projectionYears: "Number of years to project into the future.",
-	annualGrossIncome: "Your projected annual income while working. Use a pessimistic (lower) estimate to be conservative.",
-	incomeGrowthRate: "Annual income growth rate. If 2%, your salary grows 2% per year. Compare to inflation rate: same = keeping pace with economy, higher = outpacing inflation, lower = falling behind.",
-	annualExpenses: "Your baseline living expenses to maintain a good lifestyle. Use a pessimistic (higher) estimate.",
-	taxRateSchedule: "Define tax rates that change over time. Applied to gross income. Years must be in ascending order. Higher tax percentages can represent you taking a step back, and having less income. A 100% tax rate means you stop working.",
+	incomeType: "How to model your income: Fixed (constant with growth rate), Range (different amounts for different year ranges), or Manual (specify each year individually).",
+	incomeFixed: "Starting annual income and growth rate. Growth compounds yearly.",
+	incomeRange: "Define different income levels for different year ranges. Useful for modeling career changes or retirement phases.",
+	incomeManual: "Manually specify income for each individual year. Most flexible but requires more data entry.",
+	expenseType: "How to model your expenses: Fixed (constant with growth rate), Range (different amounts for different year ranges), or Manual (specify each year individually).",
+	expenseFixed: "Starting annual expenses and growth rate (e.g., inflation). Growth compounds yearly.",
+	expenseRange: "Define different expense levels for different year ranges. Useful for modeling lifestyle changes or retirement.",
+	expenseManual: "Manually specify expenses for each individual year. Most flexible but requires more data entry.",
+	taxType: "How to model your tax rate: Fixed (constant rate), Range (different rates for different year ranges), or Manual (specify each year individually). Tax rates are percentages as decimals (e.g., 0.30 for 30%).",
+	taxFixed: "Fixed tax rate applied to all years. Enter as decimal (e.g., 0.30 for 30%).",
+	taxRange: "Define different tax rates for different year ranges. Useful for modeling career changes or retirement. A 100% (1.00) tax rate means you stop working.",
+	taxManual: "Manually specify tax rate for each individual year. Enter as decimals (e.g., 0.30 for 30%).",
 	assetAllocation: "Your current assets and their expected returns. Liquid assets can be used to cover expenses, non-liquid cannot.",
 	returnRate: "Expected annual return/appreciation rate for this asset.",
 	liquid: "Can this asset be sold/liquidated to cover expenses? (Yes for stocks/crypto, No for primary residence)",

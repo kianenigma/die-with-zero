@@ -5,13 +5,23 @@ import zoomPlugin from 'chartjs-plugin-zoom';
 import 'hammerjs';
 
 import { EXAMPLE_DATA, TOOLTIPS } from './config';
+import {
+	getIncomeForYear,
+	getIncomeValue,
+	getExpenseForYear,
+	getExpenseValue,
+	getTaxForYear,
+	getTaxRate
+} from './income';
 import type {
 	FinancialParams,
 	ProjectionRow,
 	DieWithZeroAnalysis,
 	AppData,
 	ProjectionOptions,
-	TaxRate
+	IncomeType,
+	ExpenseType,
+	TaxType
 } from './types';
 
 // Register Chart.js components
@@ -24,7 +34,7 @@ const app = createApp(defineComponent({
 			chartInstance: null,
 			tooltips: TOOLTIPS,
 			sidebarCollapsed: false,
-			darkTheme: true
+			darkTheme: false
 		};
 	},
 	computed: {
@@ -69,6 +79,10 @@ const app = createApp(defineComponent({
 		}
 	},
 	watch: {
+		'params.years'() {
+			// Sync income years when projection years change
+			this.syncIncomeYears();
+		},
 		params: {
 			handler() {
 				this.$nextTick(() => {
@@ -152,16 +166,6 @@ const app = createApp(defineComponent({
 			};
 			reader.readAsText(file);
 		},
-		addTaxRate() {
-			// Find the last year and add a new tax rate for the next year
-			const lastYear = this.params.taxRates.length > 0
-				? this.params.taxRates[this.params.taxRates.length - 1].year
-				: 0;
-			this.params.taxRates.push({ year: lastYear + 1, rate: 30 });
-		},
-		removeTaxRate(index: number) {
-			this.params.taxRates.splice(index, 1);
-		},
 		addAsset() {
 			this.params.assets.push({ name: 'New Asset', amount: 0, rate: 0, liquid: true });
 		},
@@ -174,14 +178,298 @@ const app = createApp(defineComponent({
 		removeMilestone(index: number) {
 			this.params.milestones.splice(index, 1);
 		},
-		getTaxRateForYear(year: number): number {
-			// Sort and find the most recent tax rate at or before this year
-			const sorted = [...this.params.taxRates].sort((a, b) => a.year - b.year);
-			const applicable = sorted.filter(tr => tr.year <= year);
-			if (applicable.length > 0) {
-				return applicable[applicable.length - 1].rate / 100;
+		changeIncomeType(newType: IncomeType) {
+			// When changing income type, preserve what we can and create sensible defaults
+			const currentIncome = this.params.income;
+			const years = this.params.years;
+
+			if (newType === 'fixed') {
+				// Try to get a starting value from current income
+				let start = 80000;
+				if (currentIncome.type === 'range' && currentIncome.payload.length > 0) {
+					start = currentIncome.payload[0].amount;
+				} else if (currentIncome.type === 'manual' && currentIncome.payload.length > 0) {
+					start = currentIncome.payload[0];
+				} else if (currentIncome.type === 'fixed') {
+					start = currentIncome.payload.start;
+				}
+
+				this.params.income = {
+					type: 'fixed',
+					years,
+					payload: {
+						start,
+						growth: 0.03
+					}
+				};
+			} else if (newType === 'range') {
+				// Create a simple range starting at current income
+				let start = 80000;
+				if (currentIncome.type === 'fixed') {
+					start = currentIncome.payload.start;
+				} else if (currentIncome.type === 'range' && currentIncome.payload.length > 0) {
+					start = currentIncome.payload[0].amount;
+				} else if (currentIncome.type === 'manual' && currentIncome.payload.length > 0) {
+					start = currentIncome.payload[0];
+				}
+
+				this.params.income = {
+					type: 'range',
+					years,
+					payload: [
+						{ from: 0, amount: start }
+					]
+				};
+			} else if (newType === 'manual') {
+				// Fill manual with sensible defaults
+				const payload: number[] = [];
+				for (let year = 0; year < years; year++) {
+					const incomeResult = getIncomeForYear(currentIncome, year);
+					payload.push(getIncomeValue(incomeResult));
+				}
+
+				this.params.income = {
+					type: 'manual',
+					years,
+					payload
+				};
 			}
-			return sorted.length > 0 ? sorted[0].rate / 100 : 0.3;
+		},
+		addIncomeRange() {
+			if (this.params.income.type !== 'range') return;
+
+			const lastRange = this.params.income.payload.length > 0
+				? this.params.income.payload[this.params.income.payload.length - 1]
+				: { from: 0, amount: 80000 };
+
+			this.params.income.payload.push({
+				from: Math.min(lastRange.from + 5, this.params.years),
+				amount: lastRange.amount
+			});
+		},
+		removeIncomeRange(index: number) {
+			if (this.params.income.type !== 'range') return;
+			if (this.params.income.payload.length > 1) {
+				this.params.income.payload.splice(index, 1);
+			}
+		},
+		syncIncomeYears() {
+			// Sync income.years with params.years
+			this.params.income.years = this.params.years;
+
+			// For manual type, adjust the array length
+			if (this.params.income.type === 'manual') {
+				const currentLength = this.params.income.payload.length;
+				const targetLength = this.params.years;
+
+				if (currentLength < targetLength) {
+					// Add more years with default values
+					const lastValue = currentLength > 0 ? this.params.income.payload[currentLength - 1] : 0;
+					for (let i = currentLength; i < targetLength; i++) {
+						this.params.income.payload.push(lastValue);
+					}
+				} else if (currentLength > targetLength) {
+					// Remove excess years
+					this.params.income.payload = this.params.income.payload.slice(0, targetLength);
+				}
+			}
+
+			// Sync expense.years
+			this.params.expense.years = this.params.years;
+			if (this.params.expense.type === 'manual') {
+				const currentLength = this.params.expense.payload.length;
+				const targetLength = this.params.years;
+
+				if (currentLength < targetLength) {
+					const lastValue = currentLength > 0 ? this.params.expense.payload[currentLength - 1] : 0;
+					for (let i = currentLength; i < targetLength; i++) {
+						this.params.expense.payload.push(lastValue);
+					}
+				} else if (currentLength > targetLength) {
+					this.params.expense.payload = this.params.expense.payload.slice(0, targetLength);
+				}
+			}
+
+			// Sync tax.years
+			this.params.tax.years = this.params.years;
+			if (this.params.tax.type === 'manual') {
+				const currentLength = this.params.tax.payload.length;
+				const targetLength = this.params.years;
+
+				if (currentLength < targetLength) {
+					const lastValue = currentLength > 0 ? this.params.tax.payload[currentLength - 1] : 0;
+					for (let i = currentLength; i < targetLength; i++) {
+						this.params.tax.payload.push(lastValue);
+					}
+				} else if (currentLength > targetLength) {
+					this.params.tax.payload = this.params.tax.payload.slice(0, targetLength);
+				}
+			}
+		},
+		setAllManualIncome(value: number) {
+			if (this.params.income.type !== 'manual') return;
+
+			// Set all years to the specified value
+			for (let i = 0; i < this.params.income.payload.length; i++) {
+				this.params.income.payload[i] = value;
+			}
+		},
+		// Expense management methods
+		changeExpenseType(newType: ExpenseType) {
+			const currentExpense = this.params.expense;
+			const years = this.params.years;
+
+			if (newType === 'fixed') {
+				let start = 40000;
+				if (currentExpense.type === 'range' && currentExpense.payload.length > 0) {
+					start = currentExpense.payload[0].amount;
+				} else if (currentExpense.type === 'manual' && currentExpense.payload.length > 0) {
+					start = currentExpense.payload[0];
+				} else if (currentExpense.type === 'fixed') {
+					start = currentExpense.payload.start;
+				}
+
+				this.params.expense = {
+					type: 'fixed',
+					years,
+					payload: {
+						start,
+						growth: 0.03
+					}
+				};
+			} else if (newType === 'range') {
+				let start = 40000;
+				if (currentExpense.type === 'fixed') {
+					start = currentExpense.payload.start;
+				} else if (currentExpense.type === 'range' && currentExpense.payload.length > 0) {
+					start = currentExpense.payload[0].amount;
+				} else if (currentExpense.type === 'manual' && currentExpense.payload.length > 0) {
+					start = currentExpense.payload[0];
+				}
+
+				this.params.expense = {
+					type: 'range',
+					years,
+					payload: [
+						{ from: 0, amount: start }
+					]
+				};
+			} else if (newType === 'manual') {
+				const payload: number[] = [];
+				for (let year = 0; year < years; year++) {
+					const expenseResult = getExpenseForYear(currentExpense, year);
+					payload.push(getExpenseValue(expenseResult));
+				}
+
+				this.params.expense = {
+					type: 'manual',
+					years,
+					payload
+				};
+			}
+		},
+		addExpenseRange() {
+			if (this.params.expense.type !== 'range') return;
+
+			const lastRange = this.params.expense.payload.length > 0
+				? this.params.expense.payload[this.params.expense.payload.length - 1]
+				: { from: 0, amount: 40000 };
+
+			this.params.expense.payload.push({
+				from: Math.min(lastRange.from + 5, this.params.years),
+				amount: lastRange.amount
+			});
+		},
+		removeExpenseRange(index: number) {
+			if (this.params.expense.type !== 'range') return;
+			if (this.params.expense.payload.length > 1) {
+				this.params.expense.payload.splice(index, 1);
+			}
+		},
+		setAllManualExpense(value: number) {
+			if (this.params.expense.type !== 'manual') return;
+
+			for (let i = 0; i < this.params.expense.payload.length; i++) {
+				this.params.expense.payload[i] = value;
+			}
+		},
+		// Tax management methods
+		changeTaxType(newType: TaxType) {
+			const currentTax = this.params.tax;
+			const years = this.params.years;
+
+			if (newType === 'fixed') {
+				let rate = 0.30;
+				if (currentTax.type === 'range' && currentTax.payload.length > 0) {
+					rate = currentTax.payload[0].rate;
+				} else if (currentTax.type === 'manual' && currentTax.payload.length > 0) {
+					rate = currentTax.payload[0];
+				} else if (currentTax.type === 'fixed') {
+					rate = currentTax.payload.rate;
+				}
+
+				this.params.tax = {
+					type: 'fixed',
+					years,
+					payload: {
+						rate
+					}
+				};
+			} else if (newType === 'range') {
+				let rate = 0.30;
+				if (currentTax.type === 'fixed') {
+					rate = currentTax.payload.rate;
+				} else if (currentTax.type === 'range' && currentTax.payload.length > 0) {
+					rate = currentTax.payload[0].rate;
+				} else if (currentTax.type === 'manual' && currentTax.payload.length > 0) {
+					rate = currentTax.payload[0];
+				}
+
+				this.params.tax = {
+					type: 'range',
+					years,
+					payload: [
+						{ from: 0, rate }
+					]
+				};
+			} else if (newType === 'manual') {
+				const payload: number[] = [];
+				for (let year = 0; year < years; year++) {
+					const taxResult = getTaxForYear(currentTax, year);
+					payload.push(getTaxRate(taxResult));
+				}
+
+				this.params.tax = {
+					type: 'manual',
+					years,
+					payload
+				};
+			}
+		},
+		addTaxRange() {
+			if (this.params.tax.type !== 'range') return;
+
+			const lastRange = this.params.tax.payload.length > 0
+				? this.params.tax.payload[this.params.tax.payload.length - 1]
+				: { from: 0, rate: 0.30 };
+
+			this.params.tax.payload.push({
+				from: Math.min(lastRange.from + 5, this.params.years),
+				rate: lastRange.rate
+			});
+		},
+		removeTaxRange(index: number) {
+			if (this.params.tax.type !== 'range') return;
+			if (this.params.tax.payload.length > 1) {
+				this.params.tax.payload.splice(index, 1);
+			}
+		},
+		setAllManualTax(value: number) {
+			if (this.params.tax.type !== 'manual') return;
+
+			for (let i = 0; i < this.params.tax.payload.length; i++) {
+				this.params.tax.payload[i] = value;
+			}
 		},
 		formatNumber(num: number): string {
 			return new Intl.NumberFormat('en-US', {
@@ -202,11 +490,12 @@ const app = createApp(defineComponent({
 			const parsed = parseFloat(cleaned);
 			return isNaN(parsed) ? 0 : parsed;
 		},
-		getEstimatedIncomeForTaxRate(taxRate: TaxRate): number {
+		getEstimatedIncomeForTaxRange(taxRangeItem: { from: number; rate: number }): number {
 			// Calculate gross income at the year this tax rate starts
-			const grossIncome = this.params.annualGrossIncome * Math.pow(1 + this.params.incomeGrowthRate / 100, taxRate.year);
-			// Apply tax to get net income
-			const netIncome = grossIncome * (1 - taxRate.rate / 100);
+			const incomeResult = getIncomeForYear(this.params.income, taxRangeItem.from);
+			const grossIncome = getIncomeValue(incomeResult);
+			// Apply tax to get net income (rate is already decimal)
+			const netIncome = grossIncome * (1 - taxRangeItem.rate);
 			return netIncome;
 		},
 		_projectBase(options: ProjectionOptions = {}): ProjectionRow[] {
@@ -221,8 +510,6 @@ const app = createApp(defineComponent({
 			const p = this.params;
 
 			// Initialize
-			let currentGrossIncome = p.annualGrossIncome;
-			let currentExpenses = p.annualExpenses;
 			const assets: Record<string, number> = {};
 			p.assets.forEach(a => assets[a.name] = a.amount);
 
@@ -234,14 +521,22 @@ const app = createApp(defineComponent({
 
 			let previousNetWorth: number | null = null;
 
-			for (let year = 0; year <= p.years; year++) {
-				// Set income to zero after zeroIncomeFromYear if specified
-				if (zeroIncomeFromYear !== null && year >= zeroIncomeFromYear) {
-					currentGrossIncome = 0;
+			for (let year = 0; year < p.years; year++) {
+				// Get income for this year
+				let currentGrossIncome = 0;
+				if (zeroIncomeFromYear === null || year < zeroIncomeFromYear) {
+					const incomeResult = getIncomeForYear(p.income, year);
+					currentGrossIncome = getIncomeValue(incomeResult);
 				}
 
-				const taxRate = this.getTaxRateForYear(year);
-				const totalExpenses = currentExpenses;
+				// Get tax rate for this year
+				const taxResult = getTaxForYear(p.tax, year);
+				const taxRate = getTaxRate(taxResult);
+
+				// Get expenses for this year
+				const expenseResult = getExpenseForYear(p.expense, year);
+				const totalExpenses = getExpenseValue(expenseResult);
+
 				const currentNetIncome = currentGrossIncome * (1 - taxRate);
 				const totalNetWorth = Object.values(assets).reduce((sum, val) => sum + val, 0);
 				const annualSavings = year > 0 ? currentNetIncome - totalExpenses : 0;
@@ -296,12 +591,6 @@ const app = createApp(defineComponent({
 
 				// Project to next year
 				if (year < p.years) {
-					// Increase income due to growth rate (only if not yet at zeroIncomeFromYear)
-					if (zeroIncomeFromYear === null || year < zeroIncomeFromYear - 1) {
-						currentGrossIncome *= 1 + (p.incomeGrowthRate / 100);
-					}
-
-					currentExpenses *= 1 + (p.inflationRate / 100);
 
 					// Track gains/losses for this year if requested
 					const assetGains: Record<string, number> = {};
