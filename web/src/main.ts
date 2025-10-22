@@ -28,9 +28,7 @@ import type {
 } from './types';
 
 // TODO: year 0 calculation is still a bit off
-// TODO: die with zero calculation is off
 // TODO: years is duplicate in overall config and individual income/expense/tax
-// TODO: projection: how much should be your yearly to die with target X after Y years.
 
 // Register Chart.js components
 Chart.register(...registerables, annotationPlugin, zoomPlugin);
@@ -122,7 +120,8 @@ const app = createApp(defineComponent({
 				optimalYear,
 				optimalFinalWorth,
 				requiredAnnualSavings,
-				target
+				target,
+				currentFinalWorth
 			};
 		},
 		incomeValidation(): { ok: boolean; reason?: string } {
@@ -133,6 +132,43 @@ const app = createApp(defineComponent({
 		},
 		taxValidation(): { ok: boolean; reason?: string } {
 			return validateTax(this.params.tax);
+		},
+		suggestedExpenseAdjustment(): { startingExpense: number; growth: number } | null {
+			// Only provide suggestion if we have a shortfall/surplus
+			const analysis = this.dieWithZero;
+			const shortfall = analysis.target - analysis.currentFinalWorth;
+			if (shortfall === 0) {
+				return null;
+			}
+
+			// Get current expense settings
+			let currentStart = 0;
+			let currentGrowth = 0;
+
+			if (this.params.expense.type === 'fixed') {
+				currentStart = this.params.expense.payload.start;
+				currentGrowth = this.params.expense.payload.growth;
+			} else if (this.params.expense.type === 'range' && this.params.expense.payload.length > 0) {
+				currentStart = this.params.expense.payload[0].amount;
+				currentGrowth = 0;
+			} else if (this.params.expense.type === 'manual' && this.params.expense.payload.length > 0) {
+				currentStart = this.params.expense.payload[0];
+				currentGrowth = 0;
+			} else {
+				return null;
+			}
+
+			// Calculate adjustment needed
+			// If shortfall is positive, we need to REDUCE expenses (save more)
+			// If shortfall is negative, we can INCREASE expenses (save less)
+			const adjustmentPerYear = -shortfall / this.params.years;
+			const suggestedStart = currentStart + adjustmentPerYear;
+
+			// Use the same growth rate they currently have
+			return {
+				startingExpense: Math.max(0, suggestedStart),
+				growth: currentGrowth
+			};
 		}
 	},
 	watch: {

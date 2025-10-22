@@ -583,6 +583,12 @@
 								{{ params.currency }}{{ formatNumber(Math.abs(dieWithZero.requiredAnnualSavings)) }}/year
 							</p>
 							<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">To reach target while working all {{ params.years }} years</p>
+							<div v-if="suggestedExpenseAdjustment" class="mt-3 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
+								<p class="text-xs text-blue-800 dark:text-blue-300">
+									<strong>Try this:</strong> Set your expense to <strong>Fixed</strong> with starting value <strong>{{ params.currency }}{{ formatNumber(suggestedExpenseAdjustment.startingExpense) }}</strong>
+									and growth rate <strong>{{ (suggestedExpenseAdjustment.growth * 100).toFixed(1) }}%</strong> to see how you'd reach {{ params.currency }}{{ formatNumber(dieWithZero.target) }}.
+								</p>
+							</div>
 						</div>
 						<div v-else>
 							<p class="text-sm text-green-600 dark:text-green-400">On track!</p>

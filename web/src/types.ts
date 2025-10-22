@@ -148,6 +148,7 @@ export interface DieWithZeroAnalysis {
 	optimalFinalWorth: number;
 	requiredAnnualSavings: number | null;
 	target: number;
+	currentFinalWorth: number;
 }
 
 export interface AppData {
