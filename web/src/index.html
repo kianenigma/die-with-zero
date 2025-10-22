@@ -150,6 +150,13 @@
 				<span class="tooltip-icon inline-flex items-center justify-center w-3 h-3 rounded-full bg-gray-400 text-white text-[8px] font-normal cursor-help opacity-60 hover:opacity-100 ml-2" :data-tooltip="tooltips.incomeType">?</span>
 			</h2>
 
+			<!-- Income Validation Error -->
+			<div v-if="!incomeValidation.ok" class="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800 rounded-lg">
+				<p class="text-sm text-red-800 dark:text-red-300">
+					<strong>Income Error:</strong> {{ incomeValidation.reason }}
+				</p>
+			</div>
+
 			<!-- Income Type Selection -->
 			<div class="flex flex-col mb-4">
 				<label class="font-medium mb-1 text-gray-600 dark:text-gray-400 text-xs">Income Type</label>
@@ -247,6 +254,13 @@
 				<span class="tooltip-icon inline-flex items-center justify-center w-3 h-3 rounded-full bg-gray-400 text-white text-[8px] font-normal cursor-help opacity-60 hover:opacity-100 ml-2" :data-tooltip="tooltips.expenseType">?</span>
 			</h2>
 
+			<!-- Expense Validation Error -->
+			<div v-if="!expenseValidation.ok" class="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800 rounded-lg">
+				<p class="text-sm text-red-800 dark:text-red-300">
+					<strong>Expense Error:</strong> {{ expenseValidation.reason }}
+				</p>
+			</div>
+
 			<!-- Expense Type Selection -->
 			<div class="flex flex-col mb-4">
 				<label class="font-medium mb-1 text-gray-600 dark:text-gray-400 text-xs">Expense Type</label>
@@ -343,6 +357,13 @@
 				Tax Parameters
 				<span class="tooltip-icon inline-flex items-center justify-center w-3 h-3 rounded-full bg-gray-400 text-white text-[8px] font-normal cursor-help opacity-60 hover:opacity-100 ml-2" :data-tooltip="tooltips.taxType">?</span>
 			</h2>
+
+			<!-- Tax Validation Error -->
+			<div v-if="!taxValidation.ok" class="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800 rounded-lg">
+				<p class="text-sm text-red-800 dark:text-red-300">
+					<strong>Tax Error:</strong> {{ taxValidation.reason }}
+				</p>
+			</div>
 
 			<!-- Tax Type Selection -->
 			<div class="flex flex-col mb-4">

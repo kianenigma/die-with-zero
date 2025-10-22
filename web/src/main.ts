@@ -11,7 +11,10 @@ import {
 	getExpenseForYear,
 	getExpenseValue,
 	getTaxForYear,
-	getTaxRate
+	getTaxRate,
+	validateIncome,
+	validateExpense,
+	validateTax
 } from './income';
 import type {
 	FinancialParams,
@@ -24,7 +27,6 @@ import type {
 	TaxType
 } from './types';
 
-// TODO: use validation of income/tax/expense in the UI
 // TODO: year 0 calculation is still a bit off
 // TODO: die with zero calculation is off
 // TODO: years is duplicate in overall config and individual income/expense/tax
@@ -97,6 +99,15 @@ const app = createApp(defineComponent({
 				optimalFinalWorth,
 				target
 			};
+		},
+		incomeValidation(): { ok: boolean; reason?: string } {
+			return validateIncome(this.params.income);
+		},
+		expenseValidation(): { ok: boolean; reason?: string } {
+			return validateExpense(this.params.expense);
+		},
+		taxValidation(): { ok: boolean; reason?: string } {
+			return validateTax(this.params.tax);
 		}
 	},
 	watch: {
