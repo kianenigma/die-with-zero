@@ -16,7 +16,7 @@ A financial planning tool to help you visualize your net worth trajectory and op
 ## Getting Started
 
 ### Online Version
-Visit the live demo: [GitHub Pages URL will be available after setup]
+Visit the live demo: blog.kianenigma.com/die-with-zero/
 
 ### Local Version
 Open `web/index.html` in your browser - no installation required. The tool runs entirely client-side.

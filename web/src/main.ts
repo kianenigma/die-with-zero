@@ -28,6 +28,8 @@ import type {
 // TODO: year 0 calculation is still a bit off
 // TODO: die with zero calculation is off
 // TODO: years is duplicate in overall config and individual income/expense/tax
+// TODO: localhost saving.
+// TODO: projection: how much should be your yearly to die with target X after Y years.
 
 // Register Chart.js components
 Chart.register(...registerables, annotationPlugin, zoomPlugin);
@@ -692,14 +694,22 @@ const app = createApp(defineComponent({
 
 			// Create datasets for each asset
 			const datasets = this.params.assets.map((asset, index) => {
-				const colors = ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c'];
+				const colors = [
+					'#6b8ba8', // dim blue
+					'#7a9b7f', // dim green
+					'#b37d7d', // dim red
+					'#9b8fb3', // dim purple
+					'#b3956b', // dim orange/brown
+					'#7db3ad'  // dim teal
+				];
 				return {
 					label: asset.name,
 					data: this.projection.map(p => p.assets?.[asset.name] || 0),
 					borderColor: colors[index % colors.length],
 					backgroundColor: colors[index % colors.length] + '20',
 					tension: 0.4,
-					fill: false
+					fill: false,
+					borderWidth: 2
 				};
 			});
 
@@ -707,8 +717,8 @@ const app = createApp(defineComponent({
 			datasets.push({
 				label: 'Total Net Worth',
 				data: this.projection.map(p => p.totalNetWorth),
-				borderColor: '#2c3e50',
-				backgroundColor: '#2c3e5020',
+				borderColor: '#475569',
+				backgroundColor: '#47556920',
 				borderWidth: 3,
 				tension: 0.4,
 				fill: false
@@ -716,8 +726,8 @@ const app = createApp(defineComponent({
 
 			// Get theme colors
 			const isDark = document.documentElement.classList.contains('dark');
-			const textColor = isDark ? '#e0e0e0' : '#666';
-			const gridColor = isDark ? '#404040' : '#e0e0e0';
+			const textColor = isDark ? '#9ca3af' : '#6b7280';
+			const gridColor = isDark ? '#374151' : '#e5e7eb';
 
 			// Create milestone annotations only if annotation plugin is available
 			const chartOptions: any = {
@@ -799,14 +809,14 @@ const app = createApp(defineComponent({
 							type: 'line',
 							yMin: milestone,
 							yMax: milestone,
-							borderColor: '#e67e22',
+							borderColor: '#9a6b65',
 							borderWidth: 2,
 							borderDash: [5, 5],
 							label: {
 								display: true,
 								content: '€' + (milestone / 1000000).toFixed(1) + 'M',
 								position: 'end',
-								backgroundColor: '#e67e22'
+								backgroundColor: '#9a6b65'
 							}
 						};
 					}
