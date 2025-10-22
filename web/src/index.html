@@ -551,17 +551,44 @@
 						placeholder="0"> Analysis
 					<span class="tooltip-icon inline-flex items-center justify-center w-3 h-3 rounded-full bg-gray-400 text-white text-[8px] font-normal cursor-help opacity-60 hover:opacity-100 ml-2" :data-tooltip="tooltips.targetFinalNetWorth">?</span>
 				</h2>
-				<div class="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg my-4 border border-gray-200 dark:border-gray-700">
-					<p class="my-1.5 text-sm text-gray-800 dark:text-gray-200"><strong class="text-gray-800 dark:text-gray-200">If you stop working NOW (year 0):</strong></p>
-					<p class="my-1.5 text-sm text-gray-800 dark:text-gray-200 ml-5">Final net worth in year {{ params.years }}: {{ params.currency }}{{ formatNumber(dieWithZero.stopNow) }}</p>
-					<p class="my-1.5 text-sm text-gray-800 dark:text-gray-200 mt-4"><strong class="text-gray-800 dark:text-gray-200">Optimal retirement year to reach {{ params.currency }}{{ formatNumber(dieWithZero.target) }}:</strong></p>
-					<p v-if="dieWithZero.optimalYear > 0" class="my-1.5 text-sm text-gray-800 dark:text-gray-200 ml-5">
-						Stop working at year {{ dieWithZero.optimalYear }}<br>
-						Final net worth in year {{ params.years }}: {{ params.currency }}{{ formatNumber(dieWithZero.optimalFinalWorth) }}
-					</p>
-					<p v-else class="my-1.5 text-sm ml-5 text-danger">
-						Cannot reach target - expenses exceed asset growth even with continued income
-					</p>
+				<div class="grid grid-cols-3 gap-4 my-4">
+					<!-- Column 1: Stop Now -->
+					<div class="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+						<h3 class="text-xs font-medium uppercase tracking-wide text-gray-600 dark:text-gray-400 mb-3">Stop Working Now</h3>
+						<p class="text-sm text-gray-800 dark:text-gray-200 mb-2">If you stop at <strong>year 0</strong>:</p>
+						<p class="text-2xl font-medium text-gray-800 dark:text-gray-200">{{ params.currency }}{{ formatNumber(dieWithZero.stopNow) }}</p>
+						<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Final net worth in year {{ params.years }}</p>
+					</div>
+
+					<!-- Column 2: Optimal Year -->
+					<div class="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+						<h3 class="text-xs font-medium uppercase tracking-wide text-gray-600 dark:text-gray-400 mb-3">Optimal Retirement Year</h3>
+						<div v-if="dieWithZero.optimalYear !== null && dieWithZero.optimalFinalWorth >= dieWithZero.target">
+							<p class="text-sm text-gray-800 dark:text-gray-200 mb-2">Stop working at:</p>
+							<p class="text-2xl font-medium text-gray-800 dark:text-gray-200">Year {{ dieWithZero.optimalYear }}</p>
+							<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Final: {{ params.currency }}{{ formatNumber(dieWithZero.optimalFinalWorth) }}</p>
+						</div>
+						<div v-else>
+							<p class="text-sm text-danger">Cannot reach target of {{ params.currency }}{{ formatNumber(dieWithZero.target) }}</p>
+							<p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Best case: Year {{ dieWithZero.optimalYear }}<br>{{ params.currency }}{{ formatNumber(dieWithZero.optimalFinalWorth) }}</p>
+						</div>
+					</div>
+
+					<!-- Column 3: Required Savings -->
+					<div class="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+						<h3 class="text-xs font-medium uppercase tracking-wide text-gray-600 dark:text-gray-400 mb-3">Required Annual Savings</h3>
+						<div v-if="dieWithZero.requiredAnnualSavings !== null && dieWithZero.requiredAnnualSavings !== 0">
+							<p class="text-sm text-gray-800 dark:text-gray-200 mb-2">{{ dieWithZero.requiredAnnualSavings > 0 ? 'Additional savings needed:' : 'You can reduce savings by:' }}</p>
+							<p class="text-2xl font-medium" :class="dieWithZero.requiredAnnualSavings > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'">
+								{{ params.currency }}{{ formatNumber(Math.abs(dieWithZero.requiredAnnualSavings)) }}/year
+							</p>
+							<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">To reach target while working all {{ params.years }} years</p>
+						</div>
+						<div v-else>
+							<p class="text-sm text-green-600 dark:text-green-400">On track!</p>
+							<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Current plan meets your target</p>
+						</div>
+					</div>
 				</div>
 
 				<!-- Chart -->

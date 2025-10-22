@@ -67,36 +67,61 @@ const app = createApp(defineComponent({
 		dieWithZero(): DieWithZeroAnalysis {
 			const target = this.params.targetFinalNetWorth || 0;
 
-			// Calculate if you stop working now
+			// 1. Calculate if you stop working now (year 0)
 			const stopNowProjection = this.calculateProjectionWithZeroIncome(0);
 			const stopNow = stopNowProjection[stopNowProjection.length - 1].totalNetWorth;
 
-			// Find optimal retirement year to reach target
-			let bestYear = 0;
-			let bestDiff = Math.abs(stopNow - target);
-			let optimalFinalWorth = stopNow;
+			// 2. Find optimal year to stop working to reach target final net worth
+			let optimalYear: number | null = null;
+			let optimalFinalWorth = 0;
 
-			for (let retireYear = 1; retireYear <= this.params.years; retireYear++) {
+			// Try each possible retirement year
+			for (let retireYear = 0; retireYear <= this.params.years; retireYear++) {
 				const projection = this.calculateProjectionWithZeroIncome(retireYear);
 				const finalWorth = projection[projection.length - 1].totalNetWorth;
-				const diff = Math.abs(finalWorth - target);
 
-				if (diff < bestDiff) {
-					bestDiff = diff;
-					bestYear = retireYear;
+				// We want the earliest year where we can reach or exceed the target
+				if (finalWorth >= target) {
+					optimalYear = retireYear;
 					optimalFinalWorth = finalWorth;
-				}
-
-				// If net worth goes too negative, we've gone too far
-				if (finalWorth < target - Math.abs(target)) {
 					break;
 				}
 			}
 
+			// If no year works, find the year that gets closest to target
+			if (optimalYear === null) {
+				let bestDiff = Infinity;
+				for (let retireYear = 0; retireYear <= this.params.years; retireYear++) {
+					const projection = this.calculateProjectionWithZeroIncome(retireYear);
+					const finalWorth = projection[projection.length - 1].totalNetWorth;
+					const diff = Math.abs(finalWorth - target);
+
+					if (diff < bestDiff) {
+						bestDiff = diff;
+						optimalYear = retireYear;
+						optimalFinalWorth = finalWorth;
+					}
+				}
+			}
+
+			// 3. Calculate required annual savings to reach target (assuming you work all years)
+			// Use the current projection and see what the shortfall/surplus is
+			const currentProjection = this.calculateProjection();
+			const currentFinalWorth = currentProjection[currentProjection.length - 1].totalNetWorth;
+			const shortfall = target - currentFinalWorth;
+
+			let requiredAnnualSavings: number | null = null;
+			if (shortfall !== 0) {
+				// Simple approximation: divide shortfall by number of years
+				// This is a rough estimate, as it doesn't account for compounding
+				requiredAnnualSavings = shortfall / this.params.years;
+			}
+
 			return {
 				stopNow,
-				optimalYear: bestYear,
+				optimalYear,
 				optimalFinalWorth,
+				requiredAnnualSavings,
 				target
 			};
 		},

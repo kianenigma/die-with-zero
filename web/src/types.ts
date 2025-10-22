@@ -144,8 +144,9 @@ export interface ProjectionRow {
 
 export interface DieWithZeroAnalysis {
 	stopNow: number;
-	optimalYear: number;
+	optimalYear: number | null;
 	optimalFinalWorth: number;
+	requiredAnnualSavings: number | null;
 	target: number;
 }
 
