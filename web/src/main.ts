@@ -28,16 +28,30 @@ import type {
 // TODO: year 0 calculation is still a bit off
 // TODO: die with zero calculation is off
 // TODO: years is duplicate in overall config and individual income/expense/tax
-// TODO: localhost saving.
 // TODO: projection: how much should be your yearly to die with target X after Y years.
 
 // Register Chart.js components
 Chart.register(...registerables, annotationPlugin, zoomPlugin);
 
+const STORAGE_KEY = 'die-with-zero-params';
+
 const app = createApp(defineComponent({
 	data(): AppData {
+		// Try to load from localStorage, fallback to EXAMPLE_DATA
+		const loadFromStorage = (): FinancialParams => {
+			try {
+				const stored = localStorage.getItem(STORAGE_KEY);
+				if (stored) {
+					return JSON.parse(stored) as FinancialParams;
+				}
+			} catch (error) {
+				console.error('Error loading from localStorage:', error);
+			}
+			return JSON.parse(JSON.stringify(EXAMPLE_DATA));
+		};
+
 		return {
-			params: JSON.parse(JSON.stringify(EXAMPLE_DATA)),
+			params: loadFromStorage(),
 			chartInstance: null,
 			tooltips: TOOLTIPS,
 			sidebarCollapsed: false,
@@ -92,6 +106,13 @@ const app = createApp(defineComponent({
 		},
 		params: {
 			handler() {
+				// Save to localStorage whenever params change
+				try {
+					localStorage.setItem(STORAGE_KEY, JSON.stringify(this.params));
+				} catch (error) {
+					console.error('Error saving to localStorage:', error);
+				}
+
 				this.$nextTick(() => {
 					this.updateChart();
 				});
