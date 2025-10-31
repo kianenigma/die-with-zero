@@ -8,6 +8,7 @@ export const M = 1000 * K;
 export const EXAMPLE_DATA: FinancialParams = {
 	currency: '€',
 	currentAge: 30,
+	years: 40,
 	income: {
 		type: 'fixed',
 		years: 40,
@@ -33,14 +34,14 @@ export const EXAMPLE_DATA: FinancialParams = {
 			{ from: 20, rate: 1.00 }
 		]
 	},
-	years: 40,
 	assets: [
-		{ name: 'ETFs', amount: 200000, rate: 4, liquid: true },
-		{ name: 'Crypto', amount: 50000, rate: 6, liquid: true },
+		{ name: 'ETFs', amount: 200000, rate: 3, liquid: true },
+		{ name: 'Crypto', amount: 50000, rate: 5, liquid: true },
 		{ name: 'Real Estate', amount: 400000, rate: 1, liquid: false }
 	],
 	milestones: [500 * K, M],
-	targetFinalNetWorth: 0
+	targetFinalNetWorth: 500 * K,
+	transactions: []
 };
 
 // Tooltip descriptions
@@ -64,5 +65,6 @@ export const TOOLTIPS: Record<string, string> = {
 	liquid: "Can this asset be sold/liquidated to cover expenses? (Yes for stocks/crypto, No for primary residence)",
 	milestones: "Net worth goals to track. The table shows which milestones haven't been reached yet.",
 	targetFinalNetWorth: "The target net worth you want to have at the end of the projection period. Set to 0 to 'die with zero', or any amount you want to leave behind or have as a safety buffer.",
-	yearlyBreakdown: "Year 0 represents your starting point (no savings or gains yet). From year 1 onwards, each asset column shows the current value with: appreciation (green ↑) from growth rate, contributions (lighter green ↑↑) from your savings (only liquid assets), and losses (red ↓) from liquidation to cover expenses. Total Net Worth shows the net change (green/red ↑/↓) from the previous year."
+	yearlyBreakdown: "Year 0 represents your starting point (no savings or gains yet). From year 1 onwards, each asset column shows the current value with: appreciation (green ↑) from growth rate, contributions (lighter green ↑↑) from your savings (only liquid assets), and losses (red ↓) from liquidation to cover expenses. Total Net Worth shows the net change (green/red ↑/↓) from the previous year.",
+	transactions: "Define asset transformations at specific years. You can convert a fixed amount or percentage of one asset into another. For example, convert 50% of Crypto to ETFs in year 10. Transactions that reference non-existent assets will be automatically removed."
 };

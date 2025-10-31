@@ -101,6 +101,15 @@ export interface TaxManual {
 
 export type Tax = TaxFixed | TaxRange | TaxManual;
 
+// Transaction types
+export interface Transaction {
+	year: number;
+	fromAsset: string;
+	toAsset: string;
+	amountType: 'fixed' | 'percentage';
+	amount: number; // Either a fixed amount or a percentage (0-100)
+}
+
 export interface ValidationResult {
 	ok: boolean;
 	reason?: string;
@@ -124,6 +133,7 @@ export interface FinancialParams {
 	assets: Asset[];
 	milestones: number[];
 	targetFinalNetWorth: number;
+	transactions: Transaction[];
 }
 
 export interface ProjectionRow {

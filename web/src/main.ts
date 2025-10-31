@@ -24,7 +24,8 @@ import type {
 	ProjectionOptions,
 	IncomeType,
 	ExpenseType,
-	TaxType
+	TaxType,
+	Transaction
 } from './types';
 
 // TODO: year 0 calculation is still a bit off
@@ -176,6 +177,13 @@ const app = createApp(defineComponent({
 			// Sync income years when projection years change
 			this.syncIncomeYears();
 		},
+		'params.assets': {
+			handler() {
+				// Cleanup transactions when assets are removed
+				this.cleanupInvalidTransactions();
+			},
+			deep: true
+		},
 		params: {
 			handler() {
 				// Save to localStorage whenever params change
@@ -277,6 +285,25 @@ const app = createApp(defineComponent({
 		},
 		removeMilestone(index: number) {
 			this.params.milestones.splice(index, 1);
+		},
+		addTransaction() {
+			this.params.transactions.push({
+				year: 0,
+				fromAsset: this.params.assets[0]?.name || '',
+				toAsset: this.params.assets[0]?.name || '',
+				amountType: 'percentage',
+				amount: 0
+			});
+		},
+		removeTransaction(index: number) {
+			this.params.transactions.splice(index, 1);
+		},
+		cleanupInvalidTransactions() {
+			// Remove transactions that reference non-existent assets
+			const assetNames = new Set(this.params.assets.map(a => a.name));
+			this.params.transactions = this.params.transactions.filter(t =>
+				assetNames.has(t.fromAsset) && assetNames.has(t.toAsset)
+			);
 		},
 		changeIncomeType(newType: IncomeType) {
 			// When changing income type, preserve what we can and create sensible defaults
@@ -742,6 +769,32 @@ const app = createApp(defineComponent({
 						assets[asset.name] *= 1 + (asset.rate / 100);
 						if (trackGainsLosses) {
 							assetGains[asset.name] += appreciation;
+						}
+					});
+
+					// Process transactions for the next year
+					const nextYear = year + 1;
+					const transactionsForNextYear = (p.transactions || []).filter(t => t.year === nextYear);
+					transactionsForNextYear.forEach(transaction => {
+						if (assets[transaction.fromAsset] !== undefined && assets[transaction.toAsset] !== undefined) {
+							let transactionAmount = 0;
+
+							if (transaction.amountType === 'percentage') {
+								// Convert percentage (0-100) to decimal and calculate amount
+								transactionAmount = assets[transaction.fromAsset] * (transaction.amount / 100);
+							} else {
+								// Fixed amount
+								transactionAmount = Math.min(transaction.amount, assets[transaction.fromAsset]);
+							}
+
+							// Perform the transaction
+							assets[transaction.fromAsset] -= transactionAmount;
+							assets[transaction.toAsset] += transactionAmount;
+
+							if (trackGainsLosses) {
+								assetLosses[transaction.fromAsset] += transactionAmount;
+								assetContributions[transaction.toAsset] += transactionAmount;
+							}
 						}
 					});
 
