@@ -38,12 +38,53 @@ const STORAGE_KEY = 'die-with-zero-params';
 
 const app = createApp(defineComponent({
 	data(): AppData {
+		// Merge stored data with defaults to ensure all properties exist
+		const mergeWithDefaults = (stored: any, defaults: FinancialParams): FinancialParams => {
+			// Deep merge function to ensure all nested properties exist
+			const result: any = JSON.parse(JSON.stringify(defaults));
+
+			if (!stored || typeof stored !== 'object') {
+				return result;
+			}
+
+			// Merge top-level properties
+			for (const key in defaults) {
+				if (stored.hasOwnProperty(key)) {
+					const storedValue = stored[key];
+					const defaultValue = (defaults as any)[key];
+
+					// Handle arrays
+					if (Array.isArray(defaultValue)) {
+						result[key] = Array.isArray(storedValue) ? storedValue : defaultValue;
+					}
+					// Handle objects (like income, expense, tax)
+					else if (typeof defaultValue === 'object' && defaultValue !== null) {
+						result[key] = typeof storedValue === 'object' && storedValue !== null
+							? { ...defaultValue, ...storedValue }
+							: defaultValue;
+					}
+					// Handle primitives
+					else {
+						result[key] = storedValue;
+					}
+				}
+			}
+
+			// Ensure transactions array exists (for backward compatibility)
+			if (!result.transactions) {
+				result.transactions = [];
+			}
+
+			return result;
+		};
+
 		// Try to load from localStorage, fallback to EXAMPLE_DATA
 		const loadFromStorage = (): FinancialParams => {
 			try {
 				const stored = localStorage.getItem(STORAGE_KEY);
 				if (stored) {
-					return JSON.parse(stored) as FinancialParams;
+					const parsed = JSON.parse(stored);
+					return mergeWithDefaults(parsed, EXAMPLE_DATA);
 				}
 			} catch (error) {
 				console.error('Error loading from localStorage:', error);
@@ -51,12 +92,48 @@ const app = createApp(defineComponent({
 			return JSON.parse(JSON.stringify(EXAMPLE_DATA));
 		};
 
+		const loadSidebarWidth = (): number => {
+			const DEFAULT_WIDTH = 500;
+			const MIN_WIDTH = 300;
+			const MAX_WIDTH = 800;
+
+			try {
+				const stored = localStorage.getItem('sidebar-width');
+				if (stored) {
+					const parsed = parseInt(stored, 10);
+					// Validate the parsed value
+					if (!isNaN(parsed) && parsed >= MIN_WIDTH && parsed <= MAX_WIDTH) {
+						return parsed;
+					}
+				}
+			} catch (error) {
+				console.error('Error loading sidebar width:', error);
+			}
+			return DEFAULT_WIDTH;
+		};
+
+		const loadDarkTheme = (): boolean => {
+			const DEFAULT_THEME = false; // Default to light theme
+
+			try {
+				const stored = localStorage.getItem('dark-theme');
+				if (stored !== null && stored !== undefined) {
+					return stored === 'true';
+				}
+			} catch (error) {
+				console.error('Error loading dark theme:', error);
+			}
+			return DEFAULT_THEME;
+		};
+
 		return {
 			params: loadFromStorage(),
 			chartInstance: null,
 			tooltips: TOOLTIPS,
 			sidebarCollapsed: false,
-			darkTheme: false
+			darkTheme: loadDarkTheme(),
+			sidebarWidth: loadSidebarWidth(),
+			isResizing: false
 		};
 	},
 	computed: {
@@ -184,6 +261,26 @@ const app = createApp(defineComponent({
 			},
 			deep: true
 		},
+		sidebarWidth(newWidth: number) {
+			// Save sidebar width to localStorage
+			try {
+				localStorage.setItem('sidebar-width', newWidth.toString());
+			} catch (error) {
+				console.error('Error saving sidebar width:', error);
+			}
+			// Update chart after resize
+			this.$nextTick(() => {
+				this.updateChart();
+			});
+		},
+		darkTheme(newValue: boolean) {
+			// Save dark theme to localStorage
+			try {
+				localStorage.setItem('dark-theme', newValue.toString());
+			} catch (error) {
+				console.error('Error saving dark theme:', error);
+			}
+		},
 		params: {
 			handler() {
 				// Save to localStorage whenever params change
@@ -287,6 +384,11 @@ const app = createApp(defineComponent({
 			this.params.milestones.splice(index, 1);
 		},
 		addTransaction() {
+			// Ensure transactions array exists
+			if (!this.params.transactions) {
+				this.params.transactions = [];
+			}
+
 			this.params.transactions.push({
 				year: 0,
 				fromAsset: this.params.assets[0]?.name || '',
@@ -296,14 +398,70 @@ const app = createApp(defineComponent({
 			});
 		},
 		removeTransaction(index: number) {
+			if (!this.params.transactions) {
+				return;
+			}
 			this.params.transactions.splice(index, 1);
 		},
 		cleanupInvalidTransactions() {
+			// Ensure transactions array exists
+			if (!this.params.transactions) {
+				this.params.transactions = [];
+				return;
+			}
+
 			// Remove transactions that reference non-existent assets
 			const assetNames = new Set(this.params.assets.map(a => a.name));
 			this.params.transactions = this.params.transactions.filter(t =>
 				assetNames.has(t.fromAsset) && assetNames.has(t.toAsset)
 			);
+		},
+		startResize(event: MouseEvent) {
+			this.isResizing = true;
+			document.body.classList.add('resizing');
+			event.preventDefault();
+		},
+		handleResize(event: MouseEvent) {
+			if (!this.isResizing) return;
+
+			const minWidth = 300;
+			const maxWidth = 800;
+			const newWidth = Math.min(Math.max(event.clientX, minWidth), maxWidth);
+
+			this.sidebarWidth = newWidth;
+		},
+		stopResize() {
+			this.isResizing = false;
+			document.body.classList.remove('resizing');
+		},
+		getAssetValueAtYear(assetName: string, year: number): number {
+			// Calculate what the asset value will be at the END of the specified year
+			// AFTER all income/expenses/appreciation but BEFORE transactions for that year are applied
+
+			// The value we want is: start of year + all gains/losses EXCEPT outgoing transfers
+			// This is because we want to show what's available BEFORE the transaction
+
+			const projection = this.projection;
+
+			if (year >= projection.length) {
+				return 0;
+			}
+
+			const row = projection[year];
+			if (!row || !row.assets) return 0;
+
+			// Start with the beginning value
+			let value = row.assets[assetName] || 0;
+
+			// Add all gains that happen during this year
+			if (row.assetAppreciation) value += row.assetAppreciation[assetName] || 0;
+			if (row.assetSavingsContributions) value += row.assetSavingsContributions[assetName] || 0;
+			if (row.assetIncomingTransfers) value += row.assetIncomingTransfers[assetName] || 0;
+
+			// Subtract expense losses (but NOT outgoing transfers, since we want the value BEFORE transfers)
+			if (row.assetExpenseLosses) value -= row.assetExpenseLosses[assetName] || 0;
+
+			return value;
 		},
 		changeIncomeType(newType: IncomeType) {
 			// When changing income type, preserve what we can and create sensible defaults
@@ -646,8 +804,6 @@ const app = createApp(defineComponent({
 				p.milestones.forEach(m => milestonesReached[m] = null);
 			}
 
-			let previousNetWorth: number | null = null;
-
 			for (let year = 0; year < p.years; year++) {
 				// Get income for this year
 				let currentGrossIncome = 0;
@@ -666,10 +822,7 @@ const app = createApp(defineComponent({
 
 				const currentNetIncome = currentGrossIncome * (1 - taxRate);
 				const totalNetWorth = Object.values(assets).reduce((sum, val) => sum + val, 0);
-				const annualSavings = year > 0 ? currentNetIncome - totalExpenses : 0;
-
-				// Calculate net worth change
-				const netWorthChange = previousNetWorth !== null ? totalNetWorth - previousNetWorth : 0;
+				const annualSavings = currentNetIncome - totalExpenses;
 
 				// Check milestones if tracking
 				if (trackMilestones) {
@@ -680,7 +833,7 @@ const app = createApp(defineComponent({
 					}
 				}
 
-				// Build result object
+				// Build result object - this shows START of year values
 				const result: ProjectionRow = { year, totalNetWorth };
 
 				if (trackGainsLosses) {
@@ -690,44 +843,34 @@ const app = createApp(defineComponent({
 						.map(m => '€' + (m / 1000000).toFixed(1) + 'M')
 						.join(', ');
 
-					// Initialize gain/loss tracking for this year
-					const assetAppreciation: Record<string, number> = {};
-					const assetContributions: Record<string, number> = {};
-					const assetLosses: Record<string, number> = {};
-					p.assets.forEach(a => {
-						assetAppreciation[a.name] = 0;
-						assetContributions[a.name] = 0;
-						assetLosses[a.name] = 0;
-					});
-
 					result.grossIncome = currentGrossIncome;
 					result.tax = taxRate * 100; // Convert to percentage
 					result.netIncome = currentNetIncome;
 					result.expenses = totalExpenses;
 					result.savings = annualSavings;
 					result.assets = { ...assets };
-					result.assetAppreciation = { ...assetAppreciation };
-					result.assetContributions = { ...assetContributions };
-					result.assetLosses = { ...assetLosses };
-					result.netWorthChange = netWorthChange;
 					result.unrealizedMilestones = unrealized || 'All reached!';
 				}
 
 				results.push(result);
-				previousNetWorth = totalNetWorth;
 
-				// Project to next year
-				if (year < p.years) {
+				// Project to next year (calculate what happens DURING this year)
+				// This will be shown as arrows in the current row
+				if (year < p.years - 1) { // Don't project past the last year
 
-					// Track gains/losses for this year if requested
-					const assetGains: Record<string, number> = {};
-					const assetContributions: Record<string, number> = {};
-					const assetLosses: Record<string, number> = {};
+					// Track gains/losses for this year if requested (separate by type)
+					const assetAppreciationGains: Record<string, number> = {};
+					const assetSavingsGains: Record<string, number> = {};
+					const assetTransferGains: Record<string, number> = {};
+					const assetExpenseLosses: Record<string, number> = {};
+					const assetTransferLosses: Record<string, number> = {};
 					if (trackGainsLosses) {
 						p.assets.forEach(a => {
-							assetGains[a.name] = 0;
-							assetContributions[a.name] = 0;
-							assetLosses[a.name] = 0;
+							assetAppreciationGains[a.name] = 0;
+							assetSavingsGains[a.name] = 0;
+							assetTransferGains[a.name] = 0;
+							assetExpenseLosses[a.name] = 0;
+							assetTransferLosses[a.name] = 0;
 						});
 					}
 
@@ -742,7 +885,7 @@ const app = createApp(defineComponent({
 								const contribution = annualSavings * proportion;
 								assets[asset.name] += contribution;
 								if (trackGainsLosses) {
-									assetContributions[asset.name] += contribution;
+									assetSavingsGains[asset.name] += contribution;
 								}
 							});
 						}
@@ -757,7 +900,7 @@ const app = createApp(defineComponent({
 								const liquidation = amountToLiquidate * proportion;
 								assets[asset.name] -= liquidation;
 								if (trackGainsLosses) {
-									assetLosses[asset.name] += liquidation;
+									assetExpenseLosses[asset.name] += liquidation;
 								}
 							});
 						}
@@ -768,41 +911,82 @@ const app = createApp(defineComponent({
 						const appreciation = assets[asset.name] * (asset.rate / 100);
 						assets[asset.name] *= 1 + (asset.rate / 100);
 						if (trackGainsLosses) {
-							assetGains[asset.name] += appreciation;
+							assetAppreciationGains[asset.name] += appreciation;
 						}
 					});
 
-					// Process transactions for the next year
-					const nextYear = year + 1;
-					const transactionsForNextYear = (p.transactions || []).filter(t => t.year === nextYear);
-					transactionsForNextYear.forEach(transaction => {
+					// Process transactions for this year AFTER all appreciation/gains
+					// This means "year 5" transactions happen at the END of year 5
+					// IMPORTANT: When multiple transactions exist for the same year, they ALL
+					// use the SAME pre-transaction asset values (not affecting each other)
+					const transactionsForThisYear = (p.transactions || []).filter(t => t.year === year);
+
+					// First pass: Calculate all transaction amounts using PRE-transaction values
+					const transactionAmounts: Array<{
+						from: string;
+						to: string;
+						amount: number;
+					}> = [];
+
+					transactionsForThisYear.forEach(transaction => {
 						if (assets[transaction.fromAsset] !== undefined && assets[transaction.toAsset] !== undefined) {
 							let transactionAmount = 0;
 
 							if (transaction.amountType === 'percentage') {
 								// Convert percentage (0-100) to decimal and calculate amount
+								// This uses the value AFTER all gains/losses but BEFORE any transactions
 								transactionAmount = assets[transaction.fromAsset] * (transaction.amount / 100);
 							} else {
 								// Fixed amount
 								transactionAmount = Math.min(transaction.amount, assets[transaction.fromAsset]);
 							}
 
-							// Perform the transaction
-							assets[transaction.fromAsset] -= transactionAmount;
-							assets[transaction.toAsset] += transactionAmount;
-
-							if (trackGainsLosses) {
-								assetLosses[transaction.fromAsset] += transactionAmount;
-								assetContributions[transaction.toAsset] += transactionAmount;
-							}
+							transactionAmounts.push({
+								from: transaction.fromAsset,
+								to: transaction.toAsset,
+								amount: transactionAmount
+							});
 						}
 					});
 
-					// Update the current year's data with the gains/losses
+					// Second pass: Apply all transactions
+					transactionAmounts.forEach(({ from, to, amount }) => {
+						assets[from] -= amount;
+						assets[to] += amount;
+
+						// Track for display (separate transfers from other gains/losses)
+						if (trackGainsLosses) {
+							assetTransferLosses[from] += amount;
+							assetTransferGains[to] += amount;
+						}
+					});
+
+					// Attach the gains/losses to the CURRENT row (what happens during this year)
 					if (trackGainsLosses) {
-						results[results.length - 1].assetAppreciation = { ...assetGains };
-						results[results.length - 1].assetContributions = { ...assetContributions };
-						results[results.length - 1].assetLosses = { ...assetLosses };
+						// Store what will happen during this year (to be shown in this row's arrows)
+						result.assetAppreciation = { ...assetAppreciationGains };
+						result.assetSavingsContributions = { ...assetSavingsGains };
+						result.assetIncomingTransfers = { ...assetTransferGains };
+						result.assetExpenseLosses = { ...assetExpenseLosses };
+						result.assetOutgoingTransfers = { ...assetTransferLosses };
+
+						// Calculate net worth change: difference between current and next year
+						const nextYearNetWorth = Object.values(assets).reduce((sum, val) => sum + val, 0);
+						result.netWorthChange = nextYearNetWorth - totalNetWorth;
+					}
+				} else {
+					// Last year - no arrows needed
+					if (trackGainsLosses) {
+						// Initialize empty tracking for last year
+						const emptyTracking: Record<string, number> = {};
+						p.assets.forEach(a => emptyTracking[a.name] = 0);
+
+						result.assetAppreciation = { ...emptyTracking };
+						result.assetSavingsContributions = { ...emptyTracking };
+						result.assetIncomingTransfers = { ...emptyTracking };
+						result.assetExpenseLosses = { ...emptyTracking };
+						result.assetOutgoingTransfers = { ...emptyTracking };
+						result.netWorthChange = 0; // No change after last year
 					}
 				}
 			}
@@ -990,6 +1174,10 @@ const app = createApp(defineComponent({
 		this.$nextTick(() => {
 			this.updateChart();
 		});
+
+		// Setup resize event listeners
+		document.addEventListener('mousemove', this.handleResize);
+		document.addEventListener('mouseup', this.stopResize);
 
 		// Setup tooltip handling
 		const tooltip = document.getElementById('tooltip');

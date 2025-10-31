@@ -145,9 +145,13 @@ export interface ProjectionRow {
 	expenses?: number;
 	savings?: number;
 	assets?: Record<string, number>;
-	assetAppreciation?: Record<string, number>;
-	assetContributions?: Record<string, number>;
-	assetLosses?: Record<string, number>;
+	// Gains broken down by type
+	assetAppreciation?: Record<string, number>; // Organic gains from growth rate
+	assetSavingsContributions?: Record<string, number>; // Gains from leftover savings
+	assetIncomingTransfers?: Record<string, number>; // Gains from incoming asset transfers
+	// Losses broken down by type
+	assetExpenseLosses?: Record<string, number>; // Losses from negative expenses (liquidation)
+	assetOutgoingTransfers?: Record<string, number>; // Losses from outgoing asset transfers
 	netWorthChange?: number;
 	unrealizedMilestones?: string;
 }
@@ -167,6 +171,8 @@ export interface AppData {
 	tooltips: Record<string, string>;
 	sidebarCollapsed: boolean;
 	darkTheme: boolean;
+	sidebarWidth: number;
+	isResizing: boolean;
 }
 
 export interface ProjectionOptions {

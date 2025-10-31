@@ -151,6 +151,55 @@
 			border-right: none;
 		}
 
+		.resize-handle {
+			position: absolute;
+			right: 0;
+			top: 0;
+			bottom: 0;
+			width: 8px;
+			cursor: col-resize;
+			z-index: 200;
+			transition: background-color 0.2s;
+		}
+
+		.resize-handle:hover,
+		.resize-handle.resizing {
+			background: rgba(59, 130, 246, 0.3);
+		}
+
+		.resize-handle::after {
+			content: '';
+			position: absolute;
+			right: 2px;
+			top: 50%;
+			transform: translateY(-50%);
+			width: 4px;
+			height: 40px;
+			background: rgba(100, 116, 139, 0.3);
+			border-radius: 2px;
+			transition: all 0.2s;
+		}
+
+		.resize-handle:hover::after,
+		.resize-handle.resizing::after {
+			background: rgba(59, 130, 246, 0.6);
+			height: 60px;
+		}
+
+		.dark .resize-handle::after {
+			background: rgba(148, 163, 184, 0.3);
+		}
+
+		.dark .resize-handle:hover::after,
+		.dark .resize-handle.resizing::after {
+			background: rgba(59, 130, 246, 0.6);
+		}
+
+		body.resizing {
+			cursor: col-resize;
+			user-select: none;
+		}
+
 		h1, h2, h3, h4, h5, h6 {
 			font-weight: 600;
 			letter-spacing: -0.02em;
@@ -195,7 +244,14 @@
 	<div id="app">
 		<div class="flex h-screen text-gray-800 dark:text-gray-200">
 			<!-- Sidebar with Parameters -->
-			<div class="sidebar glass-panel flex-[0_0_33.333%] p-6 overflow-y-auto relative z-[100] transition-all duration-300" :class="{ collapsed: sidebarCollapsed }">
+			<div class="sidebar glass-panel p-6 overflow-y-auto relative z-[100] transition-all duration-300"
+				:class="{ collapsed: sidebarCollapsed }"
+				:style="{ width: sidebarCollapsed ? '0' : sidebarWidth + 'px', flexShrink: 0 }">
+				<!-- Resize Handle -->
+				<div v-if="!sidebarCollapsed"
+					class="resize-handle"
+					:class="{ resizing: isResizing }"
+					@mousedown="startResize"></div>
 				<!-- Header with collapse button -->
 				<div class="flex items-center justify-between mb-6">
 					<h1 class="text-gray-900 dark:text-white text-2xl font-semibold tracking-tight">Die With Zero</h1>
@@ -593,10 +649,10 @@
 				Asset Transactions
 				<span class="tooltip-icon inline-flex items-center justify-center w-3 h-3 rounded-full bg-gray-400 text-white text-[8px] font-normal cursor-help opacity-60 hover:opacity-100 ml-2" :data-tooltip="tooltips.transactions">?</span>
 			</h2>
-			<div v-if="params.transactions.length === 0" class="mb-3 text-sm text-gray-600 dark:text-gray-400">
+			<div v-if="!params.transactions || params.transactions.length === 0" class="mb-3 text-sm text-gray-600 dark:text-gray-400">
 				No transactions defined yet. Add a transaction to convert assets between types at specific years.
 			</div>
-			<div v-for="(transaction, index) in params.transactions" :key="index" class="glass-card p-4 rounded-2xl mb-3">
+			<div v-for="(transaction, index) in (params.transactions || [])" :key="index" class="glass-card p-4 rounded-2xl mb-3">
 				<div class="grid gap-1.5 items-end" style="grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1.5fr) auto;">
 					<div class="flex flex-col min-w-0">
 						<label class="font-medium mb-1 text-gray-600 dark:text-gray-400 text-xs">Year</label>
@@ -640,6 +696,20 @@
 							@input="transaction.amount = parseInputNumber($event.target.value)">
 					</div>
 					<button class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-xl cursor-pointer text-sm font-medium shadow-lg shadow-red-500/20 mt-0" @click="removeTransaction(index)">×</button>
+				</div>
+				<!-- Helper text showing available amount -->
+				<div class="mt-3 p-3 bg-blue-50/80 dark:bg-blue-900/30 backdrop-filter backdrop-blur-lg border border-blue-200 dark:border-blue-800 rounded-xl">
+					<p class="text-xs text-blue-800 dark:text-blue-300">
+						<strong>At the end of year {{ transaction.year }}</strong> (after all gains/income/expenses): You will have
+						<strong>{{ params.currency }}{{ formatNumber(getAssetValueAtYear(transaction.fromAsset, transaction.year)) }}</strong>
+						in <strong>{{ transaction.fromAsset }}</strong>.
+						<span v-if="transaction.amountType === 'percentage' && transaction.amount > 0">
+							<br>{{ transaction.amount }}% of this = <strong>{{ params.currency }}{{ formatNumber(getAssetValueAtYear(transaction.fromAsset, transaction.year) * transaction.amount / 100) }}</strong> will be transferred to <strong>{{ transaction.toAsset }}</strong>.
+						</span>
+						<span v-else-if="transaction.amountType === 'fixed' && transaction.amount > 0">
+							<br>Transferring <strong>{{ params.currency }}{{ formatNumber(transaction.amount) }}</strong> to <strong>{{ transaction.toAsset }}</strong>.
+						</span>
+					</p>
 				</div>
 			</div>
 			<button @click="addTransaction" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl cursor-pointer text-sm font-medium shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30 mt-1.5">Add Transaction</button>
@@ -783,16 +853,41 @@
 								<td class="px-2 py-1.5 text-right border-b border-gray-200 dark:border-gray-600" :class="row.savings > 0 ? 'text-green-600' : (row.savings < 0 ? 'text-danger' : 'text-gray-800 dark:text-gray-200')">{{ params.currency }}{{ formatNumber(Math.abs(row.savings)) }}</td>
 								<td v-for="asset in params.assets" :key="asset.name" class="px-2 py-1.5 text-right border-b border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-200">
 									<div>{{ params.currency }}{{ formatNumber(row.assets[asset.name] || 0) }}</div>
-									<div v-if="row.year > 0 && (row.assetAppreciation[asset.name] > 0 || row.assetContributions[asset.name] > 0 || row.assetLosses[asset.name] > 0)" class="block text-[0.75em] mt-0.5 whitespace-nowrap">
-										<span v-if="row.assetAppreciation[asset.name] > 0" class="text-green-600 mr-2">↑{{ params.currency }}{{ formatNumber(row.assetAppreciation[asset.name]) }}</span>
-										<span v-if="row.assetContributions[asset.name] > 0" class="text-green-500 mr-2">↑↑{{ params.currency }}{{ formatNumber(row.assetContributions[asset.name]) }}</span>
-										<span v-if="row.assetLosses[asset.name] > 0" class="text-danger">↓{{ params.currency }}{{ formatNumber(row.assetLosses[asset.name]) }}</span>
+									<div class="block text-[0.75em] mt-0.5 whitespace-nowrap">
+										<!-- Gains (different shades of green) -->
+										<span v-if="row.assetAppreciation && row.assetAppreciation[asset.name] > 0"
+											class="text-green-700 dark:text-green-400 mr-1"
+											:title="'Organic growth: ' + params.currency + formatNumber(row.assetAppreciation[asset.name])">
+											↑{{ params.currency }}{{ formatNumber(row.assetAppreciation[asset.name]) }}
+										</span>
+										<span v-if="row.assetSavingsContributions && row.assetSavingsContributions[asset.name] > 0"
+											class="text-green-500 dark:text-green-300 mr-1"
+											:title="'From savings: ' + params.currency + formatNumber(row.assetSavingsContributions[asset.name])">
+											↑↑{{ params.currency }}{{ formatNumber(row.assetSavingsContributions[asset.name]) }}
+										</span>
+										<span v-if="row.assetIncomingTransfers && row.assetIncomingTransfers[asset.name] > 0"
+											class="text-green-400 dark:text-green-200 mr-1"
+											:title="'From asset transfer: ' + params.currency + formatNumber(row.assetIncomingTransfers[asset.name])">
+											↑↑↑{{ params.currency }}{{ formatNumber(row.assetIncomingTransfers[asset.name]) }}
+										</span>
+										<!-- Losses (different shades of red) -->
+										<span v-if="row.assetExpenseLosses && row.assetExpenseLosses[asset.name] > 0"
+											class="text-red-600 dark:text-red-400 mr-1"
+											:title="'Liquidated for expenses: ' + params.currency + formatNumber(row.assetExpenseLosses[asset.name])">
+											↓{{ params.currency }}{{ formatNumber(row.assetExpenseLosses[asset.name]) }}
+										</span>
+										<span v-if="row.assetOutgoingTransfers && row.assetOutgoingTransfers[asset.name] > 0"
+											class="text-red-500 dark:text-red-300"
+											:title="'Transferred to another asset: ' + params.currency + formatNumber(row.assetOutgoingTransfers[asset.name])">
+											↓↓{{ params.currency }}{{ formatNumber(row.assetOutgoingTransfers[asset.name]) }}
+										</span>
 									</div>
 								</td>
 								<td class="px-2 py-1.5 text-right border-b border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-200">
 									<div><strong>{{ params.currency }}{{ formatNumber(row.totalNetWorth) }}</strong></div>
-									<div v-if="row.year > 0 && row.netWorthChange !== 0" class="block text-[0.75em] mt-0.5 whitespace-nowrap">
-										<span :class="row.netWorthChange > 0 ? 'text-green-600' : 'text-danger'">
+									<div v-if="row.netWorthChange !== undefined && row.netWorthChange !== 0" class="block text-[0.75em] mt-0.5 whitespace-nowrap">
+										<span :class="row.netWorthChange > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'"
+											:title="'Net worth change during this year: ' + params.currency + formatNumber(Math.abs(row.netWorthChange))">
 											{{ row.netWorthChange > 0 ? '↑' : '↓' }}{{ params.currency }}{{ formatNumber(Math.abs(row.netWorthChange)) }}
 										</span>
 									</div>
