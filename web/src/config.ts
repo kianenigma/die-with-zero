@@ -4,44 +4,66 @@ import type { FinancialParams } from './types';
 export const K = 1000;
 export const M = 1000 * K;
 
-// Example data (safe to share with others)
+// Example data (based on actual financial plan)
 export const EXAMPLE_DATA: FinancialParams = {
 	currency: '€',
 	currentAge: 30,
 	years: 40,
 	income: {
-		type: 'fixed',
+		type: 'range',
 		years: 40,
-		payload: {
-			start: 80 * K,
-			growth: 0.03
-		}
+		payload: [
+			{ from: 0, amount: 100 * K },
+			{ from: 5, amount: 150 * K },
+			{ from: 15, amount: 0 }
+		]
 	},
 	expense: {
 		type: 'fixed',
 		years: 40,
 		payload: {
-			start: 40 * K,
-			growth: 0.03
+			start: 50 * K,
+			growth: 0.01
 		}
 	},
 	tax: {
 		type: 'range',
 		years: 40,
 		payload: [
-			{ from: 0, rate: 0.20 },
-			{ from: 10, rate: 0.40 },
-			{ from: 20, rate: 1.00 }
+			{ from: 0, rate: 0.25 },
+			{ from: 10, rate: 0.40 }
 		]
 	},
 	assets: [
-		{ name: 'ETFs', amount: 10000, rate: 4, liquid: true },
-		{ name: 'Crypto', amount: 50000, rate: 5, liquid: true },
-		{ name: 'Bonds', amount: 0, rate: 3, liquid: false }
+		{ name: 'ETFs', amount: 200 * K, rate: 5, liquid: true },
+		{ name: 'Crypto', amount: 50 * K, rate: 10, liquid: true },
+		{ name: 'Bonds', amount: 0, rate: 2, liquid: true }
 	],
 	milestones: [500 * K, M],
-	targetFinalNetWorth: 500 * K,
-	transactions: []
+	targetFinalNetWorth: 0,
+	transactions: [
+		{
+			year: 5,
+			fromAsset: 'Crypto',
+			toAsset: 'ETFs',
+			amountType: 'percentage',
+			amount: 50
+		},
+		{
+			year: 10,
+			fromAsset: 'Crypto',
+			toAsset: 'Bonds',
+			amountType: 'percentage',
+			amount: 100
+		},
+		{
+			year: 15,
+			fromAsset: 'ETFs',
+			toAsset: 'Bonds',
+			amountType: 'percentage',
+			amount: 100
+		}
+	]
 };
 
 // Tooltip descriptions

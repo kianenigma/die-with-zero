@@ -16,16 +16,20 @@ import {
 	validateExpense,
 	validateTax
 } from './income';
+import {
+	calculateProjection,
+	calculateDieWithZeroAnalysis,
+	calculateEstimatedNetIncome,
+	calculateAssetValueAtYear
+} from './ui-functions';
 import type {
 	FinancialParams,
 	ProjectionRow,
 	DieWithZeroAnalysis,
 	AppData,
-	ProjectionOptions,
 	IncomeType,
 	ExpenseType,
-	TaxType,
-	Transaction
+	TaxType
 } from './types';
 
 // TODO: year 0 calculation is still a bit off
@@ -138,69 +142,10 @@ const app = createApp(defineComponent({
 	},
 	computed: {
 		projection(): ProjectionRow[] {
-			return this.calculateProjection();
+			return calculateProjection(this.params);
 		},
 		dieWithZero(): DieWithZeroAnalysis {
-			const target = this.params.targetFinalNetWorth || 0;
-
-			// 1. Calculate if you stop working now (year 0)
-			const stopNowProjection = this.calculateProjectionWithZeroIncome(0);
-			const stopNow = stopNowProjection[stopNowProjection.length - 1].totalNetWorth;
-
-			// 2. Find optimal year to stop working to reach target final net worth
-			let optimalYear: number | null = null;
-			let optimalFinalWorth = 0;
-
-			// Try each possible retirement year
-			for (let retireYear = 0; retireYear <= this.params.years; retireYear++) {
-				const projection = this.calculateProjectionWithZeroIncome(retireYear);
-				const finalWorth = projection[projection.length - 1].totalNetWorth;
-
-				// We want the earliest year where we can reach or exceed the target
-				if (finalWorth >= target) {
-					optimalYear = retireYear;
-					optimalFinalWorth = finalWorth;
-					break;
-				}
-			}
-
-			// If no year works, find the year that gets closest to target
-			if (optimalYear === null) {
-				let bestDiff = Infinity;
-				for (let retireYear = 0; retireYear <= this.params.years; retireYear++) {
-					const projection = this.calculateProjectionWithZeroIncome(retireYear);
-					const finalWorth = projection[projection.length - 1].totalNetWorth;
-					const diff = Math.abs(finalWorth - target);
-
-					if (diff < bestDiff) {
-						bestDiff = diff;
-						optimalYear = retireYear;
-						optimalFinalWorth = finalWorth;
-					}
-				}
-			}
-
-			// 3. Calculate required annual savings to reach target (assuming you work all years)
-			// Use the current projection and see what the shortfall/surplus is
-			const currentProjection = this.calculateProjection();
-			const currentFinalWorth = currentProjection[currentProjection.length - 1].totalNetWorth;
-			const shortfall = target - currentFinalWorth;
-
-			let requiredAnnualSavings: number | null = null;
-			if (shortfall !== 0) {
-				// Simple approximation: divide shortfall by number of years
-				// This is a rough estimate, as it doesn't account for compounding
-				requiredAnnualSavings = shortfall / this.params.years;
-			}
-
-			return {
-				stopNow,
-				optimalYear,
-				optimalFinalWorth,
-				requiredAnnualSavings,
-				target,
-				currentFinalWorth
-			};
+			return calculateDieWithZeroAnalysis(this.params);
 		},
 		incomeValidation(): { ok: boolean; reason?: string } {
 			return validateIncome(this.params.income);
@@ -429,39 +374,15 @@ const app = createApp(defineComponent({
 			const newWidth = Math.min(Math.max(event.clientX, minWidth), maxWidth);
 
 			this.sidebarWidth = newWidth;
+			// Update CSS variable for fixed resize handle position
+			document.documentElement.style.setProperty('--sidebar-width', `${newWidth}px`);
 		},
 		stopResize() {
 			this.isResizing = false;
 			document.body.classList.remove('resizing');
 		},
 		getAssetValueAtYear(assetName: string, year: number): number {
-			// Calculate what the asset value will be at the END of the specified year
-			// AFTER all income/expenses/appreciation but BEFORE transactions for that year are applied
-
-			// The value we want is: start of year + all gains/losses EXCEPT outgoing transfers
-			// This is because we want to show what's available BEFORE the transaction
-
-			const projection = this.projection;
-
-			if (year >= projection.length) {
-				return 0;
-			}
-
-			const row = projection[year];
-			if (!row || !row.assets) return 0;
-
-			// Start with the beginning value
-			let value = row.assets[assetName] || 0;
-
-			// Add all gains that happen during this year
-			if (row.assetAppreciation) value += row.assetAppreciation[assetName] || 0;
-			if (row.assetSavingsContributions) value += row.assetSavingsContributions[assetName] || 0;
-			if (row.assetIncomingTransfers) value += row.assetIncomingTransfers[assetName] || 0;
-
-			// Subtract expense losses (but NOT outgoing transfers, since we want the value BEFORE transfers)
-			if (row.assetExpenseLosses) value -= row.assetExpenseLosses[assetName] || 0;
-
-			return value;
+			return calculateAssetValueAtYear(this.params, assetName, year);
 		},
 		changeIncomeType(newType: IncomeType) {
 			// When changing income type, preserve what we can and create sensible defaults
@@ -776,236 +697,7 @@ const app = createApp(defineComponent({
 			return isNaN(parsed) ? 0 : parsed;
 		},
 		getEstimatedIncomeForTaxRange(taxRangeItem: { from: number; rate: number }): number {
-			// Calculate gross income at the year this tax rate starts
-			const incomeResult = getIncomeForYear(this.params.income, taxRangeItem.from);
-			const grossIncome = getIncomeValue(incomeResult);
-			// Apply tax to get net income (rate is already decimal)
-			const netIncome = grossIncome * (1 - taxRangeItem.rate);
-			return netIncome;
-		},
-		_projectBase(options: ProjectionOptions = {}): ProjectionRow[] {
-			// Base projection function that both calculateProjection and calculateProjectionWithZeroIncome use
-			const {
-				zeroIncomeFromYear = null,
-				trackMilestones = false,
-				trackGainsLosses = false
-			} = options;
-
-			const results: ProjectionRow[] = [];
-			const p = this.params;
-
-			// Initialize
-			const assets: Record<string, number> = {};
-			p.assets.forEach(a => assets[a.name] = a.amount);
-
-			// Track milestones if requested
-			const milestonesReached: Record<number, number | null> = {};
-			if (trackMilestones) {
-				p.milestones.forEach(m => milestonesReached[m] = null);
-			}
-
-			for (let year = 0; year < p.years; year++) {
-				// Get income for this year
-				let currentGrossIncome = 0;
-				if (zeroIncomeFromYear === null || year < zeroIncomeFromYear) {
-					const incomeResult = getIncomeForYear(p.income, year);
-					currentGrossIncome = getIncomeValue(incomeResult);
-				}
-
-				// Get tax rate for this year
-				const taxResult = getTaxForYear(p.tax, year);
-				const taxRate = getTaxRate(taxResult);
-
-				// Get expenses for this year
-				const expenseResult = getExpenseForYear(p.expense, year);
-				const totalExpenses = getExpenseValue(expenseResult);
-
-				const currentNetIncome = currentGrossIncome * (1 - taxRate);
-				const totalNetWorth = Object.values(assets).reduce((sum, val) => sum + val, 0);
-				const annualSavings = currentNetIncome - totalExpenses;
-
-				// Check milestones if tracking
-				if (trackMilestones) {
-					for (const milestone of p.milestones) {
-						if (milestonesReached[milestone] === null && totalNetWorth >= milestone) {
-							milestonesReached[milestone] = year;
-						}
-					}
-				}
-
-				// Build result object - this shows START of year values
-				const result: ProjectionRow = { year, totalNetWorth };
-
-				if (trackGainsLosses) {
-					// Get unrealized milestones
-					const unrealized = p.milestones
-						.filter(m => milestonesReached[m] === null)
-						.map(m => '€' + (m / 1000000).toFixed(1) + 'M')
-						.join(', ');
-
-					result.grossIncome = currentGrossIncome;
-					result.tax = taxRate * 100; // Convert to percentage
-					result.netIncome = currentNetIncome;
-					result.expenses = totalExpenses;
-					result.savings = annualSavings;
-					result.assets = { ...assets };
-					result.unrealizedMilestones = unrealized || 'All reached!';
-				}
-
-				results.push(result);
-
-				// Project to next year (calculate what happens DURING this year)
-				// This will be shown as arrows in the current row
-				if (year < p.years - 1) { // Don't project past the last year
-
-					// Track gains/losses for this year if requested (separate by type)
-					const assetAppreciationGains: Record<string, number> = {};
-					const assetSavingsGains: Record<string, number> = {};
-					const assetTransferGains: Record<string, number> = {};
-					const assetExpenseLosses: Record<string, number> = {};
-					const assetTransferLosses: Record<string, number> = {};
-					if (trackGainsLosses) {
-						p.assets.forEach(a => {
-							assetAppreciationGains[a.name] = 0;
-							assetSavingsGains[a.name] = 0;
-							assetTransferGains[a.name] = 0;
-							assetExpenseLosses[a.name] = 0;
-							assetTransferLosses[a.name] = 0;
-						});
-					}
-
-					// Handle savings/liquidation
-					if (annualSavings > 0) {
-						const liquidAssets = p.assets.filter(a => a.liquid);
-						const totalLiquid = liquidAssets.reduce((sum, a) => sum + assets[a.name], 0);
-
-						if (totalLiquid > 0) {
-							liquidAssets.forEach(asset => {
-								const proportion = assets[asset.name] / totalLiquid;
-								const contribution = annualSavings * proportion;
-								assets[asset.name] += contribution;
-								if (trackGainsLosses) {
-									assetSavingsGains[asset.name] += contribution;
-								}
-							});
-						}
-					} else if (annualSavings < 0) {
-						const liquidAssets = p.assets.filter(a => a.liquid);
-						const totalLiquid = liquidAssets.reduce((sum, a) => sum + assets[a.name], 0);
-
-						if (totalLiquid > 0) {
-							const amountToLiquidate = Math.abs(annualSavings);
-							liquidAssets.forEach(asset => {
-								const proportion = assets[asset.name] / totalLiquid;
-								const liquidation = amountToLiquidate * proportion;
-								assets[asset.name] -= liquidation;
-								if (trackGainsLosses) {
-									assetExpenseLosses[asset.name] += liquidation;
-								}
-							});
-						}
-					}
-
-					// Apply appreciation rates
-					p.assets.forEach(asset => {
-						const appreciation = assets[asset.name] * (asset.rate / 100);
-						assets[asset.name] *= 1 + (asset.rate / 100);
-						if (trackGainsLosses) {
-							assetAppreciationGains[asset.name] += appreciation;
-						}
-					});
-
-					// Process transactions for this year AFTER all appreciation/gains
-					// This means "year 5" transactions happen at the END of year 5
-					// IMPORTANT: When multiple transactions exist for the same year, they ALL
-					// use the SAME pre-transaction asset values (not affecting each other)
-					const transactionsForThisYear = (p.transactions || []).filter(t => t.year === year);
-
-					// First pass: Calculate all transaction amounts using PRE-transaction values
-					const transactionAmounts: Array<{
-						from: string;
-						to: string;
-						amount: number;
-					}> = [];
-
-					transactionsForThisYear.forEach(transaction => {
-						if (assets[transaction.fromAsset] !== undefined && assets[transaction.toAsset] !== undefined) {
-							let transactionAmount = 0;
-
-							if (transaction.amountType === 'percentage') {
-								// Convert percentage (0-100) to decimal and calculate amount
-								// This uses the value AFTER all gains/losses but BEFORE any transactions
-								transactionAmount = assets[transaction.fromAsset] * (transaction.amount / 100);
-							} else {
-								// Fixed amount
-								transactionAmount = Math.min(transaction.amount, assets[transaction.fromAsset]);
-							}
-
-							transactionAmounts.push({
-								from: transaction.fromAsset,
-								to: transaction.toAsset,
-								amount: transactionAmount
-							});
-						}
-					});
-
-					// Second pass: Apply all transactions
-					transactionAmounts.forEach(({ from, to, amount }) => {
-						assets[from] -= amount;
-						assets[to] += amount;
-
-						// Track for display (separate transfers from other gains/losses)
-						if (trackGainsLosses) {
-							assetTransferLosses[from] += amount;
-							assetTransferGains[to] += amount;
-						}
-					});
-
-					// Attach the gains/losses to the CURRENT row (what happens during this year)
-					if (trackGainsLosses) {
-						// Store what will happen during this year (to be shown in this row's arrows)
-						result.assetAppreciation = { ...assetAppreciationGains };
-						result.assetSavingsContributions = { ...assetSavingsGains };
-						result.assetIncomingTransfers = { ...assetTransferGains };
-						result.assetExpenseLosses = { ...assetExpenseLosses };
-						result.assetOutgoingTransfers = { ...assetTransferLosses };
-
-						// Calculate net worth change: difference between current and next year
-						const nextYearNetWorth = Object.values(assets).reduce((sum, val) => sum + val, 0);
-						result.netWorthChange = nextYearNetWorth - totalNetWorth;
-					}
-				} else {
-					// Last year - no arrows needed
-					if (trackGainsLosses) {
-						// Initialize empty tracking for last year
-						const emptyTracking: Record<string, number> = {};
-						p.assets.forEach(a => emptyTracking[a.name] = 0);
-
-						result.assetAppreciation = { ...emptyTracking };
-						result.assetSavingsContributions = { ...emptyTracking };
-						result.assetIncomingTransfers = { ...emptyTracking };
-						result.assetExpenseLosses = { ...emptyTracking };
-						result.assetOutgoingTransfers = { ...emptyTracking };
-						result.netWorthChange = 0; // No change after last year
-					}
-				}
-			}
-
-			return results;
-		},
-		calculateProjectionWithZeroIncome(startYear: number): ProjectionRow[] {
-			return this._projectBase({
-				zeroIncomeFromYear: startYear,
-				trackMilestones: false,
-				trackGainsLosses: false
-			});
-		},
-		calculateProjection(): ProjectionRow[] {
-			return this._projectBase({
-				zeroIncomeFromYear: null,
-				trackMilestones: true,
-				trackGainsLosses: true
-			});
+			return calculateEstimatedNetIncome(this.params.income, taxRangeItem);
 		},
 		updateChart() {
 			const chartCanvas = this.$refs.chart as HTMLCanvasElement | undefined;
@@ -1170,6 +862,9 @@ const app = createApp(defineComponent({
 	mounted() {
 		// Apply dark theme on load
 		document.documentElement.classList.toggle('dark', this.darkTheme);
+
+		// Initialize CSS variable for sidebar width
+		document.documentElement.style.setProperty('--sidebar-width', `${this.sidebarWidth}px`);
 
 		this.$nextTick(() => {
 			this.updateChart();

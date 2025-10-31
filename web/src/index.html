@@ -151,48 +151,80 @@
 			border-right: none;
 		}
 
-		.resize-handle {
-			position: absolute;
-			right: 0;
-			top: 0;
-			bottom: 0;
-			width: 8px;
+		.resize-handle-header {
+			position: fixed;
+			top: 11px;
+			left: calc(var(--sidebar-width) - 16px);
+			width: 32px;
+			height: 32px;
 			cursor: col-resize;
-			z-index: 200;
-			transition: background-color 0.2s;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			z-index: 1001;
+			transition: left 0.3s;
 		}
 
-		.resize-handle:hover,
-		.resize-handle.resizing {
-			background: rgba(59, 130, 246, 0.3);
-		}
-
-		.resize-handle::after {
+		.resize-handle-header::before {
 			content: '';
 			position: absolute;
-			right: 2px;
-			top: 50%;
-			transform: translateY(-50%);
-			width: 4px;
-			height: 40px;
-			background: rgba(100, 116, 139, 0.3);
-			border-radius: 2px;
+			width: 32px;
+			height: 32px;
+			background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(240, 240, 245, 0.95) 100%);
+			border: 2px solid rgba(100, 116, 139, 0.2);
+			border-radius: 50%;
+			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1),
+			            inset 0 1px 1px rgba(255, 255, 255, 0.8);
+			transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+		}
+
+		.resize-handle-header::after {
+			content: '⋮';
+			position: relative;
+			font-size: 16px;
+			color: rgba(100, 116, 139, 0.6);
+			font-weight: bold;
+			line-height: 1;
+			z-index: 1;
 			transition: all 0.2s;
 		}
 
-		.resize-handle:hover::after,
-		.resize-handle.resizing::after {
-			background: rgba(59, 130, 246, 0.6);
-			height: 60px;
+		.resize-handle-header:hover::before,
+		.resize-handle-header.resizing::before {
+			background: linear-gradient(135deg, rgba(59, 130, 246, 0.95) 0%, rgba(37, 99, 235, 1) 100%);
+			border-color: rgba(59, 130, 246, 0.4);
+			box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3),
+			            inset 0 1px 1px rgba(255, 255, 255, 0.3);
+			transform: scale(1.1);
 		}
 
-		.dark .resize-handle::after {
-			background: rgba(148, 163, 184, 0.3);
+		.resize-handle-header:hover::after,
+		.resize-handle-header.resizing::after {
+			color: rgba(255, 255, 255, 0.9);
 		}
 
-		.dark .resize-handle:hover::after,
-		.dark .resize-handle.resizing::after {
-			background: rgba(59, 130, 246, 0.6);
+		.dark .resize-handle-header::before {
+			background: linear-gradient(135deg, rgba(30, 30, 32, 0.95) 0%, rgba(20, 20, 22, 1) 100%);
+			border-color: rgba(148, 163, 184, 0.2);
+			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3),
+			            inset 0 1px 1px rgba(255, 255, 255, 0.1);
+		}
+
+		.dark .resize-handle-header::after {
+			color: rgba(148, 163, 184, 0.7);
+		}
+
+		.dark .resize-handle-header:hover::before,
+		.dark .resize-handle-header.resizing::before {
+			background: linear-gradient(135deg, rgba(59, 130, 246, 0.95) 0%, rgba(37, 99, 235, 1) 100%);
+			border-color: rgba(59, 130, 246, 0.5);
+			box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4),
+			            inset 0 1px 1px rgba(255, 255, 255, 0.2);
+		}
+
+		.dark .resize-handle-header:hover::after,
+		.dark .resize-handle-header.resizing::after {
+			color: rgba(255, 255, 255, 0.9);
 		}
 
 		body.resizing {
@@ -242,23 +274,46 @@
 <body>
 	<div class="tooltip-popup" id="tooltip"></div>
 	<div id="app">
-		<div class="flex h-screen text-gray-800 dark:text-gray-200">
+		<!-- Fixed Header -->
+		<header class="fixed top-0 left-0 right-0 h-14 glass-panel border-b border-gray-200 dark:border-gray-700 z-[1000] flex items-center px-4 gap-4">
+			<!-- Title -->
+			<h1 class="text-gray-900 dark:text-white text-lg font-semibold tracking-tight whitespace-nowrap">D I E  -  W I T H  -  Z E R O</h1>
+
+			<!-- Resize Handle -->
+			<div v-if="!sidebarCollapsed"
+				class="resize-handle-header"
+				:class="{ resizing: isResizing }"
+				@mousedown="startResize"
+				title="Drag to resize sidebar"></div>
+
+			<!-- Spacer -->
+			<div class="flex-1"></div>
+
+			<!-- Controls -->
+			<div class="flex items-center gap-2">
+				<button class="glass-input px-3 py-1.5 rounded-lg text-xs font-medium hover:scale-105 transition-transform text-gray-900 dark:text-white" @click="toggleSidebar" title="Toggle sidebar">
+					{{ sidebarCollapsed ? '→' : '←' }}
+				</button>
+				<button class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium shadow-md hover:shadow-lg transition-all" @click="saveParameters" title="Save parameters">
+					Save
+				</button>
+				<button class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium shadow-md hover:shadow-lg transition-all" @click="$refs.fileInput.click()" title="Load parameters">
+					Load
+				</button>
+				<button class="glass-input px-3 py-1.5 rounded-lg text-xs font-medium hover:scale-105 transition-transform text-gray-900 dark:text-white" @click="toggleTheme" title="Toggle theme">
+					{{ darkTheme ? '☀' : '🌙' }}
+				</button>
+				<input type="file" ref="fileInput" @change="loadParameters" accept=".json" class="hidden">
+			</div>
+		</header>
+
+		<div class="flex h-screen pt-14 text-gray-800 dark:text-gray-200">
 			<!-- Sidebar with Parameters -->
-			<div class="sidebar glass-panel p-6 overflow-y-auto relative z-[100] transition-all duration-300"
+			<div class="sidebar glass-panel overflow-y-auto relative z-[100] transition-all duration-300"
 				:class="{ collapsed: sidebarCollapsed }"
 				:style="{ width: sidebarCollapsed ? '0' : sidebarWidth + 'px', flexShrink: 0 }">
-				<!-- Resize Handle -->
-				<div v-if="!sidebarCollapsed"
-					class="resize-handle"
-					:class="{ resizing: isResizing }"
-					@mousedown="startResize"></div>
-				<!-- Header with collapse button -->
-				<div class="flex items-center justify-between mb-6">
-					<h1 class="text-gray-900 dark:text-white text-2xl font-semibold tracking-tight">Die With Zero</h1>
-					<button class="glass-input px-3 py-2 rounded-xl text-sm font-medium hover:scale-105" @click="toggleSidebar">
-						{{ sidebarCollapsed ? '→' : '←' }}
-					</button>
-				</div>
+
+				<div class="p-6">
 
 				<!-- Basic Parameters -->
 			<h2 class="text-gray-700 dark:text-gray-300 my-5 text-sm font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 border-b border-gray-300 dark:border-gray-700 pb-2">Basic Parameters</h2>
@@ -730,26 +785,11 @@
 				</div>
 			</div>
 			<button @click="addMilestone" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl cursor-pointer text-sm font-medium shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30">Add Milestone</button>
+				</div>
 			</div>
 
 			<!-- Main Content with Results -->
 			<div class="flex-1 p-8 overflow-y-auto relative z-[1]">
-				<!-- Top toolbar with all controls -->
-				<div class="flex gap-3 mb-6 items-center">
-					<button v-if="sidebarCollapsed" class="glass-input px-4 py-2.5 rounded-xl text-sm font-medium hover:scale-105" @click="toggleSidebar">
-						→
-					</button>
-					<button class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2.5 rounded-xl cursor-pointer text-sm font-medium shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40" @click="saveParameters">
-						Save
-					</button>
-					<button class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2.5 rounded-xl cursor-pointer text-sm font-medium shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40" @click="$refs.fileInput.click()">
-						Load
-					</button>
-					<button class="glass-input px-4 py-2.5 rounded-xl text-sm font-medium hover:scale-105" @click="toggleTheme">
-						{{ darkTheme ? 'Light' : 'Dark' }}
-					</button>
-					<input type="file" ref="fileInput" @change="loadParameters" accept=".json" class="hidden">
-				</div>
 			<div v-if="projection.length > 0" class="animate-in">
 				<!-- Key Metrics -->
 				<h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Key Metrics</h2>

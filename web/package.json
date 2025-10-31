@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "bun run dev-server.ts",
-    "build": "bun build src/index.html --outdir dist --minify --target browser"
+    "build": "bun build src/index.html --outdir dist --minify --target browser",
+    "test": "bun test"
   },
   "dependencies": {
     "vue": "^3.4.21",
