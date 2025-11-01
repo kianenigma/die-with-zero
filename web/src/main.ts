@@ -687,7 +687,8 @@ const app = createApp(defineComponent({
 			return this.params.currency + this.formatNumber(num);
 		},
 		formatInputNumber(num: number): string {
-			if (num === 0 || num === null) return '';
+			if (num === null || num === undefined) return '';
+			if (num === 0) return '0';
 			return new Intl.NumberFormat('en-US').format(num);
 		},
 		parseInputNumber(value: string): number {
