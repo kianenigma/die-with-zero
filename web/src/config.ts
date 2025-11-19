@@ -9,7 +9,7 @@ export const EXAMPLE_DATA: FinancialParams = {
 	currency: '€',
 	currentAge: 30,
 	years: 40,
-	income: {
+	income: [{
 		type: 'range',
 		years: 40,
 		payload: [
@@ -17,15 +17,15 @@ export const EXAMPLE_DATA: FinancialParams = {
 			{ from: 5, amount: 150 * K },
 			{ from: 15, amount: 0 }
 		]
-	},
-	expense: {
+	}],
+	expense: [{
 		type: 'fixed',
 		years: 40,
 		payload: {
 			start: 50 * K,
 			growth: 0.01
 		}
-	},
+	}],
 	tax: {
 		type: 'range',
 		years: 40,

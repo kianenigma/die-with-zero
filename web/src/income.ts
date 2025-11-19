@@ -1,14 +1,19 @@
 import type { Income, Expense, Tax, ValidationResult, ValueResult } from './types';
 
 /**
- * Validates an income structure
+ * Validates a single income definition.
  */
-export function validateIncome(income: Income): ValidationResult {
+function validateSingleIncome(income: Income): ValidationResult {
 	if (income.type === 'fixed') {
+		if (income.payload.start < 0) {
+			return { ok: false, reason: 'Starting income cannot be negative' };
+		}
 		return { ok: true };
-	} else if (income.type === 'range') {
-		if (income.payload.length === 0) {
-			return { ok: false, reason: 'Range payload cannot be empty' };
+	}
+
+	if (income.type === 'range') {
+		if (!Array.isArray(income.payload) || income.payload.length === 0) {
+			return { ok: false, reason: 'Range income must have at least one range' };
 		}
 		if (income.payload[0].from !== 0) {
 			return { ok: false, reason: 'First range item must start at year 0' };
@@ -16,60 +21,145 @@ export function validateIncome(income: Income): ValidationResult {
 
 		let prev: typeof income.payload[0] | undefined = undefined;
 		for (const item of income.payload) {
+			if (item.amount < 0) {
+				return { ok: false, reason: 'Income amount cannot be negative' };
+			}
+			if (item.from < 0) {
+				return { ok: false, reason: 'Year cannot be negative' };
+			}
 			if (prev !== undefined && item.from <= prev.from) {
 				return { ok: false, reason: 'Range years must be in ascending order' };
 			}
 			prev = item;
 		}
 
+		// This check needs `income.years` which is on the parent Income object
+		// It's better to do this check in the main `validateIncome` if `income.years` is not always available on `Income` itself
+		// For now, assuming `income.years` is always present for a single Income object.
 		if (income.payload[income.payload.length - 1].from > income.years) {
 			return { ok: false, reason: 'Range year exceeds total projection years' };
 		}
 
 		return { ok: true };
-	} else if (income.type === 'manual') {
+	}
+
+	if (income.type === 'manual') {
+		if (!Array.isArray(income.payload)) {
+			return { ok: false, reason: 'Manual income must be an array of values' };
+		}
 		if (income.payload.length !== income.years) {
 			return { ok: false, reason: `Manual payload must have exactly ${income.years} entries (years 0 to ${income.years - 1})` };
 		}
-
+		for (const val of income.payload) {
+			if (val < 0) {
+				return { ok: false, reason: 'Income cannot be negative' };
+			}
+		}
 		return { ok: true };
-	} else {
-		return { ok: false, reason: 'Unexpected income type' };
 	}
+
+	return { ok: false, reason: 'Unknown income type' };
 }
 
 /**
- * Gets the income for a specific year
+ * Validates the income parameters.
+ *
+ * Checks if the income configuration is valid and consistent.
+ *
+ * @param incomes - The income configuration(s) to validate
+ * @returns Validation result
  */
-export function getIncomeForYear(income: Income, year: number): ValueResult {
+export function validateIncome(incomes: Income[] | Income): ValidationResult {
+	// Handle backward compatibility or single object input
+	const incomeList = Array.isArray(incomes) ? incomes : [incomes];
+
+	if (incomeList.length === 0) {
+		// It's okay to have no income? Let's say yes for now, or maybe we want at least one.
+		// For now, let's assume empty is valid (0 income).
+		return { ok: true };
+	}
+
+	for (const income of incomeList) {
+		const result = validateSingleIncome(income);
+		if (!result.ok) {
+			return result;
+		}
+	}
+
+	return { ok: true };
+}
+
+/**
+ * Calculates the income for a single income definition for a specific year.
+ */
+function getSingleIncomeForYear(income: Income, year: number): ValueResult {
 	if (year < 0 || year >= income.years) {
 		return { ok: false, reason: 'Year out of range' };
 	}
 
 	if (income.type === 'fixed') {
-		let start = income.payload.start;
-		for (let i = 0; i < year; i++) {
-			start = start + (start * income.payload.growth);
-		}
-		return { ok: true, value: start };
-	} else if (income.type === 'range') {
-		// Assume the last one is the match
-		let index = income.payload.length - 1;
-		for (let search = 0; search < income.payload.length - 1; search++) {
-			if (year >= income.payload[search].from && year < income.payload[search + 1].from) {
-				index = search;
+		const { start, growth } = income.payload;
+		const value = start * Math.pow(1 + growth, year);
+		return { ok: true, value };
+	}
+
+	if (income.type === 'range') {
+		// Find the range that applies to this year
+		// Ranges are sorted by 'from' year ascending
+		// We want the last range where range.from <= year
+		let amount = 0;
+		// Sort ranges just in case they aren't sorted (though validation should ensure this)
+		const sortedRanges = [...income.payload].sort((a, b) => a.from - b.from);
+
+		for (const range of sortedRanges) {
+			if (year >= range.from) {
+				amount = range.amount;
+			} else {
+				// Since ranges are sorted, once we pass the year, we can stop
 				break;
 			}
 		}
-		return { ok: true, amount: income.payload[index].amount };
-	} else if (income.type === 'manual') {
+		return { ok: true, value: amount };
+	}
+
+	if (income.type === 'manual') {
 		if (year < 0 || year >= income.payload.length) {
 			return { ok: false, reason: 'Year out of range for manual income' };
 		}
-		return { ok: true, amount: income.payload[year] };
-	} else {
-		return { ok: false, reason: 'Unexpected income type' };
+		const value = income.payload[year];
+		if (typeof value !== 'number') {
+			return { ok: false, reason: 'Invalid manual income data' };
+		}
+		return { ok: true, value };
 	}
+
+	return { ok: false, reason: 'Unknown income type' };
+}
+
+/**
+ * Calculates the total income for a specific year.
+ *
+ * @param incomes - The income configuration(s)
+ * @param year - The year to calculate income for (0-indexed)
+ * @returns The calculated income value or an error
+ */
+export function getIncomeForYear(incomes: Income[] | Income, year: number): ValueResult {
+	// Handle backward compatibility or single object input
+	const incomeList = Array.isArray(incomes) ? incomes : [incomes];
+
+	let totalIncome = 0;
+
+	for (const income of incomeList) {
+		const result = getSingleIncomeForYear(income, year);
+		if (!result.ok) {
+			return result;
+		}
+		if (result.value !== undefined) {
+			totalIncome += result.value;
+		}
+	}
+
+	return { ok: true, value: totalIncome };
 }
 
 /**
@@ -82,10 +172,22 @@ export function getIncomeValue(result: ValueResult): number {
 	return result.value ?? result.amount ?? 0;
 }
 
-/**
- * Validates an expense structure
- */
-export function validateExpense(expense: Expense): ValidationResult {
+export function validateExpense(expenses: Expense[]): ValidationResult {
+	if (!Array.isArray(expenses)) {
+		return { ok: false, reason: 'Expenses must be an array' };
+	}
+
+	for (const expense of expenses) {
+		const result = validateSingleExpense(expense);
+		if (!result.ok) {
+			return result;
+		}
+	}
+
+	return { ok: true };
+}
+
+function validateSingleExpense(expense: Expense): ValidationResult {
 	if (expense.type === 'fixed') {
 		return { ok: true };
 	} else if (expense.type === 'range') {
@@ -120,10 +222,24 @@ export function validateExpense(expense: Expense): ValidationResult {
 	}
 }
 
-/**
- * Gets the expense for a specific year
- */
-export function getExpenseForYear(expense: Expense, year: number): ValueResult {
+export function getExpenseForYear(expenses: Expense[], year: number): ValueResult {
+	let total = 0;
+
+	// Handle single expense object for backward compatibility or if passed incorrectly
+	const expensesList = Array.isArray(expenses) ? expenses : [expenses];
+
+	for (const expense of expensesList) {
+		const result = getSingleExpenseForYear(expense, year);
+		if (!result.ok) {
+			return result;
+		}
+		total += result.value ?? result.amount ?? 0;
+	}
+
+	return { ok: true, amount: total };
+}
+
+export function getSingleExpenseForYear(expense: Expense, year: number): ValueResult {
 	if (year < 0 || year >= expense.years) {
 		return { ok: false, reason: 'Year out of range' };
 	}

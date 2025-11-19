@@ -59,7 +59,14 @@ const app = createApp(defineComponent({
 
 					// Handle arrays
 					if (Array.isArray(defaultValue)) {
-						result[key] = Array.isArray(storedValue) ? storedValue : defaultValue;
+						// Handle backward compatibility for income/expense which changed from object to array
+						if (key === 'expense' && storedValue && !Array.isArray(storedValue) && typeof storedValue === 'object') {
+							result[key] = [storedValue];
+						} else if (key === 'income' && storedValue && !Array.isArray(storedValue) && typeof storedValue === 'object') {
+							result[key] = [storedValue];
+						} else {
+							result[key] = Array.isArray(storedValue) ? storedValue : defaultValue;
+						}
 					}
 					// Handle objects (like income, expense, tax)
 					else if (typeof defaultValue === 'object' && defaultValue !== null) {
@@ -84,6 +91,12 @@ const app = createApp(defineComponent({
 
 		// Try to load from localStorage, fallback to EXAMPLE_DATA
 		const loadFromStorage = (): FinancialParams => {
+			// In local development, always start fresh to avoid stale data issues
+			if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+				console.log('Local development detected: Using example data.');
+				return JSON.parse(JSON.stringify(EXAMPLE_DATA));
+			}
+
 			try {
 				const stored = localStorage.getItem(STORAGE_KEY);
 				if (stored) {
@@ -137,7 +150,25 @@ const app = createApp(defineComponent({
 			sidebarCollapsed: false,
 			darkTheme: loadDarkTheme(),
 			sidebarWidth: loadSidebarWidth(),
-			isResizing: false
+			isResizing: false,
+			tempExpense: {
+				type: 'fixed',
+				years: 40, // Will be synced with params.years in mounted or watch
+				payload: {
+					start: 40000,
+					growth: 0.03
+				}
+			},
+			editingExpenseIndex: null,
+			tempIncome: {
+				type: 'fixed',
+				years: 40,
+				payload: {
+					start: 50000,
+					growth: 0.02
+				}
+			},
+			editingIncomeIndex: null
 		};
 	},
 	computed: {
@@ -164,19 +195,19 @@ const app = createApp(defineComponent({
 				return null;
 			}
 
-			// Get current expense settings
+			// For now, we only suggest adjustments if there is exactly one fixed expense
+			// This simplifies the logic significantly
+			if (this.params.expense.length !== 1) {
+				return null;
+			}
+
+			const expense = this.params.expense[0];
 			let currentStart = 0;
 			let currentGrowth = 0;
 
-			if (this.params.expense.type === 'fixed') {
-				currentStart = this.params.expense.payload.start;
-				currentGrowth = this.params.expense.payload.growth;
-			} else if (this.params.expense.type === 'range' && this.params.expense.payload.length > 0) {
-				currentStart = this.params.expense.payload[0].amount;
-				currentGrowth = 0;
-			} else if (this.params.expense.type === 'manual' && this.params.expense.payload.length > 0) {
-				currentStart = this.params.expense.payload[0];
-				currentGrowth = 0;
+			if (expense.type === 'fixed') {
+				currentStart = expense.payload.start;
+				currentGrowth = expense.payload.growth;
 			} else {
 				return null;
 			}
@@ -386,7 +417,7 @@ const app = createApp(defineComponent({
 		},
 		changeIncomeType(newType: IncomeType) {
 			// When changing income type, preserve what we can and create sensible defaults
-			const currentIncome = this.params.income;
+			const currentIncome = this.tempIncome;
 			const years = this.params.years;
 
 			if (newType === 'fixed') {
@@ -400,7 +431,7 @@ const app = createApp(defineComponent({
 					start = currentIncome.payload.start;
 				}
 
-				this.params.income = {
+				this.tempIncome = {
 					type: 'fixed',
 					years,
 					payload: {
@@ -419,7 +450,7 @@ const app = createApp(defineComponent({
 					start = currentIncome.payload[0];
 				}
 
-				this.params.income = {
+				this.tempIncome = {
 					type: 'range',
 					years,
 					payload: [
@@ -430,11 +461,11 @@ const app = createApp(defineComponent({
 				// Fill manual with sensible defaults
 				const payload: number[] = [];
 				for (let year = 0; year < years; year++) {
-					const incomeResult = getIncomeForYear(currentIncome, year);
+					const incomeResult = getIncomeForYear([currentIncome], year);
 					payload.push(getIncomeValue(incomeResult));
 				}
 
-				this.params.income = {
+				this.tempIncome = {
 					type: 'manual',
 					years,
 					payload
@@ -442,57 +473,89 @@ const app = createApp(defineComponent({
 			}
 		},
 		addIncomeRange() {
-			if (this.params.income.type !== 'range') return;
+			if (this.tempIncome.type !== 'range') return;
 
-			const lastRange = this.params.income.payload.length > 0
-				? this.params.income.payload[this.params.income.payload.length - 1]
+			const lastRange = this.tempIncome.payload.length > 0
+				? this.tempIncome.payload[this.tempIncome.payload.length - 1]
 				: { from: 0, amount: 80000 };
 
-			this.params.income.payload.push({
+			this.tempIncome.payload.push({
 				from: Math.min(lastRange.from + 5, this.params.years),
 				amount: lastRange.amount
 			});
 		},
 		removeIncomeRange(index: number) {
-			if (this.params.income.type !== 'range') return;
-			if (this.params.income.payload.length > 1) {
-				this.params.income.payload.splice(index, 1);
+			if (this.tempIncome.type !== 'range') return;
+			if (this.tempIncome.payload.length > 1) {
+				this.tempIncome.payload.splice(index, 1);
 			}
 		},
 		syncIncomeYears() {
-			// Sync income.years with params.years
-			this.params.income.years = this.params.years;
+			// Sync income.years with params.years for all incomes
+			this.params.income.forEach(income => {
+				income.years = this.params.years;
+				if (income.type === 'manual') {
+					const currentLength = income.payload.length;
+					const targetLength = this.params.years;
 
-			// For manual type, adjust the array length
-			if (this.params.income.type === 'manual') {
-				const currentLength = this.params.income.payload.length;
+					if (currentLength < targetLength) {
+						const lastValue = currentLength > 0 ? income.payload[currentLength - 1] : 0;
+						for (let i = currentLength; i < targetLength; i++) {
+							income.payload.push(lastValue);
+						}
+					} else if (currentLength > targetLength) {
+						income.payload = income.payload.slice(0, targetLength);
+					}
+				}
+			});
+
+			// Sync tempIncome.years
+			this.tempIncome.years = this.params.years;
+			if (this.tempIncome.type === 'manual') {
+				const currentLength = this.tempIncome.payload.length;
 				const targetLength = this.params.years;
 
 				if (currentLength < targetLength) {
-					// Add more years with default values
-					const lastValue = currentLength > 0 ? this.params.income.payload[currentLength - 1] : 0;
+					const lastValue = currentLength > 0 ? this.tempIncome.payload[currentLength - 1] : 0;
 					for (let i = currentLength; i < targetLength; i++) {
-						this.params.income.payload.push(lastValue);
+						this.tempIncome.payload.push(lastValue);
 					}
 				} else if (currentLength > targetLength) {
-					// Remove excess years
-					this.params.income.payload = this.params.income.payload.slice(0, targetLength);
+					this.tempIncome.payload = this.tempIncome.payload.slice(0, targetLength);
 				}
 			}
 
-			// Sync expense.years
-			this.params.expense.years = this.params.years;
-			if (this.params.expense.type === 'manual') {
-				const currentLength = this.params.expense.payload.length;
+			// Sync expense.years for all expenses
+			this.params.expense.forEach(expense => {
+				expense.years = this.params.years;
+				if (expense.type === 'manual') {
+					const currentLength = expense.payload.length;
+					const targetLength = this.params.years;
+
+					if (currentLength < targetLength) {
+						const lastValue = currentLength > 0 ? expense.payload[currentLength - 1] : 0;
+						for (let i = currentLength; i < targetLength; i++) {
+							expense.payload.push(lastValue);
+						}
+					} else if (currentLength > targetLength) {
+						expense.payload = expense.payload.slice(0, targetLength);
+					}
+				}
+			});
+
+			// Sync tempExpense.years
+			this.tempExpense.years = this.params.years;
+			if (this.tempExpense.type === 'manual') {
+				const currentLength = this.tempExpense.payload.length;
 				const targetLength = this.params.years;
 
 				if (currentLength < targetLength) {
-					const lastValue = currentLength > 0 ? this.params.expense.payload[currentLength - 1] : 0;
+					const lastValue = currentLength > 0 ? this.tempExpense.payload[currentLength - 1] : 0;
 					for (let i = currentLength; i < targetLength; i++) {
-						this.params.expense.payload.push(lastValue);
+						this.tempExpense.payload.push(lastValue);
 					}
 				} else if (currentLength > targetLength) {
-					this.params.expense.payload = this.params.expense.payload.slice(0, targetLength);
+					this.tempExpense.payload = this.tempExpense.payload.slice(0, targetLength);
 				}
 			}
 
@@ -513,16 +576,61 @@ const app = createApp(defineComponent({
 			}
 		},
 		setAllManualIncome(value: number) {
-			if (this.params.income.type !== 'manual') return;
+			if (this.tempIncome.type !== 'manual') return;
 
 			// Set all years to the specified value
-			for (let i = 0; i < this.params.income.payload.length; i++) {
-				this.params.income.payload[i] = value;
+			for (let i = 0; i < this.tempIncome.payload.length; i++) {
+				this.tempIncome.payload[i] = value;
 			}
+		},
+		saveIncome() {
+			const validation = validateIncome(this.tempIncome);
+			if (!validation.ok) {
+				alert(`Cannot save income: ${validation.reason}`);
+				return;
+			}
+
+			if (this.editingIncomeIndex !== null) {
+				// Update existing
+				this.params.income[this.editingIncomeIndex] = JSON.parse(JSON.stringify(this.tempIncome));
+				this.editingIncomeIndex = null;
+			} else {
+				// Add new
+				this.params.income.push(JSON.parse(JSON.stringify(this.tempIncome)));
+			}
+
+			// Reset temp income
+			this.resetTempIncome();
+		},
+		editIncome(index: number) {
+			this.editingIncomeIndex = index;
+			this.tempIncome = JSON.parse(JSON.stringify(this.params.income[index]));
+		},
+		removeIncome(index: number) {
+			this.params.income.splice(index, 1);
+			if (this.editingIncomeIndex === index) {
+				this.cancelEditIncome();
+			} else if (this.editingIncomeIndex !== null && this.editingIncomeIndex > index) {
+				this.editingIncomeIndex--;
+			}
+		},
+		cancelEditIncome() {
+			this.editingIncomeIndex = null;
+			this.resetTempIncome();
+		},
+		resetTempIncome() {
+			this.tempIncome = {
+				type: 'fixed',
+				years: this.params.years,
+				payload: {
+					start: 50000,
+					growth: 0.02
+				}
+			};
 		},
 		// Expense management methods
 		changeExpenseType(newType: ExpenseType) {
-			const currentExpense = this.params.expense;
+			const currentExpense = this.tempExpense;
 			const years = this.params.years;
 
 			if (newType === 'fixed') {
@@ -535,7 +643,7 @@ const app = createApp(defineComponent({
 					start = currentExpense.payload.start;
 				}
 
-				this.params.expense = {
+				this.tempExpense = {
 					type: 'fixed',
 					years,
 					payload: {
@@ -553,7 +661,7 @@ const app = createApp(defineComponent({
 					start = currentExpense.payload[0];
 				}
 
-				this.params.expense = {
+				this.tempExpense = {
 					type: 'range',
 					years,
 					payload: [
@@ -563,11 +671,11 @@ const app = createApp(defineComponent({
 			} else if (newType === 'manual') {
 				const payload: number[] = [];
 				for (let year = 0; year < years; year++) {
-					const expenseResult = getExpenseForYear(currentExpense, year);
+					const expenseResult = getExpenseForYear([currentExpense], year);
 					payload.push(getExpenseValue(expenseResult));
 				}
 
-				this.params.expense = {
+				this.tempExpense = {
 					type: 'manual',
 					years,
 					payload
@@ -575,29 +683,75 @@ const app = createApp(defineComponent({
 			}
 		},
 		addExpenseRange() {
-			if (this.params.expense.type !== 'range') return;
+			if (this.tempExpense.type !== 'range') return;
 
-			const lastRange = this.params.expense.payload.length > 0
-				? this.params.expense.payload[this.params.expense.payload.length - 1]
+			const lastRange = this.tempExpense.payload.length > 0
+				? this.tempExpense.payload[this.tempExpense.payload.length - 1]
 				: { from: 0, amount: 40000 };
 
-			this.params.expense.payload.push({
+			this.tempExpense.payload.push({
 				from: Math.min(lastRange.from + 5, this.params.years),
 				amount: lastRange.amount
 			});
 		},
 		removeExpenseRange(index: number) {
-			if (this.params.expense.type !== 'range') return;
-			if (this.params.expense.payload.length > 1) {
-				this.params.expense.payload.splice(index, 1);
+			if (this.tempExpense.type !== 'range') return;
+			if (this.tempExpense.payload.length > 1) {
+				this.tempExpense.payload.splice(index, 1);
 			}
 		},
 		setAllManualExpense(value: number) {
-			if (this.params.expense.type !== 'manual') return;
+			if (this.tempExpense.type !== 'manual') return;
 
-			for (let i = 0; i < this.params.expense.payload.length; i++) {
-				this.params.expense.payload[i] = value;
+			for (let i = 0; i < this.tempExpense.payload.length; i++) {
+				this.tempExpense.payload[i] = value;
 			}
+		},
+		saveExpense() {
+			// Validate current temp expense
+			const validation = validateExpense([this.tempExpense]);
+			if (!validation.ok) {
+				alert(validation.reason);
+				return;
+			}
+
+			if (this.editingExpenseIndex !== null) {
+				// Update existing
+				this.params.expense[this.editingExpenseIndex] = JSON.parse(JSON.stringify(this.tempExpense));
+				this.editingExpenseIndex = null;
+			} else {
+				// Add new
+				this.params.expense.push(JSON.parse(JSON.stringify(this.tempExpense)));
+			}
+
+			// Reset temp expense to default fixed
+			this.resetTempExpense();
+		},
+		editExpense(index: number) {
+			this.editingExpenseIndex = index;
+			this.tempExpense = JSON.parse(JSON.stringify(this.params.expense[index]));
+		},
+		removeExpense(index: number) {
+			this.params.expense.splice(index, 1);
+			if (this.editingExpenseIndex === index) {
+				this.cancelEditExpense();
+			} else if (this.editingExpenseIndex !== null && this.editingExpenseIndex > index) {
+				this.editingExpenseIndex--;
+			}
+		},
+		cancelEditExpense() {
+			this.editingExpenseIndex = null;
+			this.resetTempExpense();
+		},
+		resetTempExpense() {
+			this.tempExpense = {
+				type: 'fixed',
+				years: this.params.years,
+				payload: {
+					start: 40000,
+					growth: 0.03
+				}
+			};
 		},
 		// Tax management methods
 		changeTaxType(newType: TaxType) {

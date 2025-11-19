@@ -126,8 +126,8 @@ export interface ValueResult {
 export interface FinancialParams {
 	currency: string;
 	currentAge: number;
-	income: Income;
-	expense: Expense;
+	income: Income[];
+	expense: Expense[];
 	tax: Tax;
 	years: number;
 	assets: Asset[];
@@ -173,6 +173,10 @@ export interface AppData {
 	darkTheme: boolean;
 	sidebarWidth: number;
 	isResizing: boolean;
+	tempExpense: Expense;
+	editingExpenseIndex: number | null;
+	tempIncome: Income;
+	editingIncomeIndex: number | null;
 }
 
 export interface ProjectionOptions {

@@ -336,7 +336,7 @@ export function calculateDieWithZeroAnalysis(params: FinancialParams): DieWithZe
  * // Returns net income at year 10 with 40% tax
  */
 export function calculateEstimatedNetIncome(
-	income: Income,
+	income: Income[] | Income,
 	taxRangeItem: { from: number; rate: number }
 ): number {
 	// Calculate gross income at the year this tax rate starts
