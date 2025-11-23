@@ -931,49 +931,142 @@ const app = createApp(defineComponent({
 			if (this.params.income.length === 0) {
 				return 'No income sources defined';
 			}
-			// Calculate individual income values for this year
-			const incomeValues = this.params.income.map(inc => {
+			const incomeLines = this.params.income.map(inc => {
 				const incomeResult = getIncomeForYear([inc], row.year);
 				const value = getIncomeValue(incomeResult);
-				return `${inc.name}: ${this.params.currency}${this.formatNumber(value)}`;
+				return `↑ ${inc.name}: ${this.params.currency}${this.formatNumber(value)}`;
 			});
 			const total = row.grossIncome || 0;
-			return `${incomeValues.join(' + ')} = ${this.params.currency}${this.formatNumber(total)}`;
+			return `Gross Income:\n${incomeLines.join('\n')}\n\nTotal: ${this.params.currency}${this.formatNumber(total)}`;
 		},
 		getNetIncomeTooltipForRow(row: ProjectionRow): string {
-			const grossIncomeNames = this.params.income.length > 0
-				? this.params.income.map(inc => inc.name).join(' + ')
-				: 'Gross Income';
 			const grossIncome = row.grossIncome || 0;
 			const taxRate = row.tax || 0;
 			const taxAmount = grossIncome * (taxRate / 100);
 			const netIncome = row.netIncome || 0;
-			return `(${grossIncomeNames}) - Tax = ${this.params.currency}${this.formatNumber(grossIncome)} - ${this.params.currency}${this.formatNumber(taxAmount)} = ${this.params.currency}${this.formatNumber(netIncome)}`;
+
+			const incomeLines = this.params.income.length > 0
+				? this.params.income.map(inc => {
+					const incomeResult = getIncomeForYear([inc], row.year);
+					const value = getIncomeValue(incomeResult);
+					return `↑ ${inc.name}: ${this.params.currency}${this.formatNumber(value)}`;
+				})
+				: [`↑ Gross Income: ${this.params.currency}${this.formatNumber(grossIncome)}`];
+
+			return `Net Income:\n${incomeLines.join('\n')}\n\nGross Income: ${this.params.currency}${this.formatNumber(grossIncome)}\n↓ Tax (${taxRate.toFixed(1)}%): ${this.params.currency}${this.formatNumber(taxAmount)}\n\n= ${this.params.currency}${this.formatNumber(netIncome)}`;
 		},
 		getExpensesTooltipForRow(row: ProjectionRow): string {
 			if (this.params.expense.length === 0) {
 				return 'No expenses defined';
 			}
-			// Calculate individual expense values for this year
-			const expenseValues = this.params.expense.map(exp => {
+			const expenseLines = this.params.expense.map(exp => {
 				const expenseResult = getExpenseForYear([exp], row.year);
 				const value = getExpenseValue(expenseResult);
-				return `${exp.name}: ${this.params.currency}${this.formatNumber(value)}`;
+				return `↓ ${exp.name}: ${this.params.currency}${this.formatNumber(value)}`;
 			});
 			const total = row.expenses || 0;
-			return `${expenseValues.join(' + ')} = ${this.params.currency}${this.formatNumber(total)}`;
+			return `Expenses:\n${expenseLines.join('\n')}\n\nTotal: ${this.params.currency}${this.formatNumber(total)}`;
 		},
 		getYearFinalTurnoverTooltipForRow(row: ProjectionRow): string {
 			const grossIncome = row.grossIncome || 0;
 			const expenses = row.expenses || 0;
 			const turnover = row.savings || 0;
-			const grossIncomeNames = this.params.income.length > 0
-				? this.params.income.map(inc => inc.name).join(' + ')
-				: 'Gross Income';
-			const expenseNames = this.params.expense.length > 0
-				? this.params.expense.map(exp => exp.name).join(' + ')
-				: 'Total Expenses';
-			return `(${grossIncomeNames}) - (${expenseNames}) = ${this.params.currency}${this.formatNumber(grossIncome)} - ${this.params.currency}${this.formatNumber(expenses)} = ${this.params.currency}${this.formatNumber(turnover)}`;
+
+			const incomeLines = this.params.income.length > 0
+				? this.params.income.map(inc => {
+					const incomeResult = getIncomeForYear([inc], row.year);
+					const value = getIncomeValue(incomeResult);
+					return `↑ ${inc.name}: ${this.params.currency}${this.formatNumber(value)}`;
+				})
+				: [`↑ Gross Income: ${this.params.currency}${this.formatNumber(grossIncome)}`];
+
+			const expenseLines = this.params.expense.length > 0
+				? this.params.expense.map(exp => {
+					const expenseResult = getExpenseForYear([exp], row.year);
+					const value = getExpenseValue(expenseResult);
+					return `↓ ${exp.name}: ${this.params.currency}${this.formatNumber(value)}`;
+				})
+				: [`↓ Total Expenses: ${this.params.currency}${this.formatNumber(expenses)}`];
+
+			// Color the turnover number: green if positive, red if negative
+			const turnoverColor = turnover >= 0 ? '#10b981' : '#ef4444'; // green-500 or red-500
+			const turnoverText = `= <span style="color: ${turnoverColor}">${this.params.currency}${this.formatNumber(Math.abs(turnover))}</span>`;
+
+			return `Year Final Turnover:\n${incomeLines.join('\n')}\n\n${expenseLines.join('\n')}\n\n${turnoverText}`;
+		},
+		getAssetTotalGains(row: ProjectionRow, assetName: string): number {
+			let total = 0;
+			if (row.assetAppreciation && row.assetAppreciation[assetName]) {
+				total += row.assetAppreciation[assetName];
+			}
+			if (row.assetSavingsContributions && row.assetSavingsContributions[assetName]) {
+				total += row.assetSavingsContributions[assetName];
+			}
+			if (row.assetIncomingTransfers && row.assetIncomingTransfers[assetName]) {
+				total += row.assetIncomingTransfers[assetName];
+			}
+			return total;
+		},
+		getAssetTotalLosses(row: ProjectionRow, assetName: string): number {
+			let total = 0;
+			if (row.assetExpenseLosses && row.assetExpenseLosses[assetName]) {
+				total += row.assetExpenseLosses[assetName];
+			}
+			if (row.assetOutgoingTransfers && row.assetOutgoingTransfers[assetName]) {
+				total += row.assetOutgoingTransfers[assetName];
+			}
+			return total;
+		},
+		getAssetNetChange(row: ProjectionRow, assetName: string): number {
+			return this.getAssetTotalGains(row, assetName) - this.getAssetTotalLosses(row, assetName);
+		},
+		getAssetTooltip(row: ProjectionRow, assetName: string): string {
+			const gainItems: string[] = [];
+			const lossItems: string[] = [];
+
+			// Collect gains with descriptions
+			if (row.assetAppreciation && row.assetAppreciation[assetName] > 0) {
+				gainItems.push(`${this.params.currency}${this.formatNumber(row.assetAppreciation[assetName])} (organic growth)`);
+			}
+			if (row.assetSavingsContributions && row.assetSavingsContributions[assetName] > 0) {
+				gainItems.push(`${this.params.currency}${this.formatNumber(row.assetSavingsContributions[assetName])} (from savings)`);
+			}
+			if (row.assetIncomingTransfers && row.assetIncomingTransfers[assetName] > 0) {
+				gainItems.push(`${this.params.currency}${this.formatNumber(row.assetIncomingTransfers[assetName])} (from asset transfer)`);
+			}
+
+			// Collect losses with descriptions
+			if (row.assetExpenseLosses && row.assetExpenseLosses[assetName] > 0) {
+				lossItems.push(`${this.params.currency}${this.formatNumber(row.assetExpenseLosses[assetName])} (sold to offset expenses)`);
+			}
+			if (row.assetOutgoingTransfers && row.assetOutgoingTransfers[assetName] > 0) {
+				lossItems.push(`${this.params.currency}${this.formatNumber(row.assetOutgoingTransfers[assetName])} (transferred to another asset)`);
+			}
+
+			const totalGains = this.getAssetTotalGains(row, assetName);
+			const totalLosses = this.getAssetTotalLosses(row, assetName);
+			const netChange = totalGains - totalLosses;
+
+			const parts: string[] = [];
+
+			// Gains section
+			if (gainItems.length > 0) {
+				parts.push(`Gains:\n${gainItems.join('\n')}\nTotal: ${this.params.currency}${this.formatNumber(totalGains)}`);
+			}
+
+			// Losses section
+			if (lossItems.length > 0) {
+				parts.push(`Losses:\n${lossItems.join('\n')}\nTotal: ${this.params.currency}${this.formatNumber(totalLosses)}`);
+			}
+
+			// Turnover calculation with colored number
+			if (gainItems.length > 0 || lossItems.length > 0) {
+				const turnoverColor = netChange >= 0 ? '#10b981' : '#ef4444'; // green-500 or red-500
+				const turnoverText = `Turnover: ${this.params.currency}${this.formatNumber(totalGains)} - ${this.params.currency}${this.formatNumber(totalLosses)} = <span style="color: ${turnoverColor}">${this.params.currency}${this.formatNumber(Math.abs(netChange))}</span>`;
+				parts.push(turnoverText);
+			}
+
+			return parts.join('\n\n');
 		},
 		updateChart() {
 			const chartCanvas = this.$refs.chart as HTMLCanvasElement | undefined;
@@ -1161,7 +1254,8 @@ const app = createApp(defineComponent({
 				const rect = target.getBoundingClientRect();
 
 				if (tooltipText) {
-					tooltip.textContent = tooltipText;
+					// Use innerHTML to support HTML formatting (like colored text)
+					tooltip.innerHTML = tooltipText.replace(/\n/g, '<br>');
 					tooltip.style.display = 'block';
 					tooltip.style.left = (rect.right + 10) + 'px';
 					tooltip.style.top = (rect.top + rect.height / 2) + 'px';

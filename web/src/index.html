@@ -150,13 +150,14 @@
 			border-radius: 10px;
 			font-size: 12px;
 			font-weight: 400;
-			white-space: normal;
+			white-space: pre-line;
 			z-index: 999999;
 			max-width: 350px;
 			width: max-content;
 			box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
 			pointer-events: none;
 			display: none;
+			line-height: 1.6;
 		}
 
 		.tooltip-popup::before {
@@ -1218,43 +1219,19 @@
 										Age</th>
 									<th
 										class="px-2 py-2 text-right border-b-2 border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-medium text-xs uppercase tracking-wide sticky top-0">
-										<div class="flex items-center justify-end gap-1">
-											<span>Gross Income</span>
-											<span
-												class="tooltip-icon inline-flex items-center justify-center w-3 h-3 rounded-full bg-gray-400 text-white text-[8px] font-normal cursor-help opacity-60 hover:opacity-100"
-												:data-tooltip="getGrossIncomeTooltip()">?</span>
-										</div>
-									</th>
+										Gross Income</th>
 									<th
 										class="px-2 py-2 text-right border-b-2 border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-medium text-xs uppercase tracking-wide sticky top-0">
 										Tax</th>
 									<th
 										class="px-2 py-2 text-right border-b-2 border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-medium text-xs uppercase tracking-wide sticky top-0">
-										<div class="flex items-center justify-end gap-1">
-											<span>Net Income</span>
-											<span
-												class="tooltip-icon inline-flex items-center justify-center w-3 h-3 rounded-full bg-gray-400 text-white text-[8px] font-normal cursor-help opacity-60 hover:opacity-100"
-												:data-tooltip="getNetIncomeTooltip()">?</span>
-										</div>
-									</th>
+										Net Income</th>
 									<th
 										class="px-2 py-2 text-right border-b-2 border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-medium text-xs uppercase tracking-wide sticky top-0">
-										<div class="flex items-center justify-end gap-1">
-											<span>Expenses</span>
-											<span
-												class="tooltip-icon inline-flex items-center justify-center w-3 h-3 rounded-full bg-gray-400 text-white text-[8px] font-normal cursor-help opacity-60 hover:opacity-100"
-												:data-tooltip="getExpensesTooltip()">?</span>
-										</div>
-									</th>
+										Expenses</th>
 									<th
 										class="px-2 py-2 text-right border-b-2 border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-medium text-xs uppercase tracking-wide sticky top-0">
-										<div class="flex items-center justify-end gap-1">
-											<span>Year Final Turnover</span>
-											<span
-												class="tooltip-icon inline-flex items-center justify-center w-3 h-3 rounded-full bg-gray-400 text-white text-[8px] font-normal cursor-help opacity-60 hover:opacity-100"
-												:data-tooltip="getYearFinalTurnoverTooltip()">?</span>
-										</div>
-									</th>
+										Year Final Turnover</th>
 									<th v-for="asset in params.assets" :key="asset.name"
 										class="px-2 py-2 text-right border-b-2 border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-medium text-xs uppercase tracking-wide sticky top-0">
 										{{ asset.name }}</th>
@@ -1314,43 +1291,21 @@
 									<td v-for="asset in params.assets" :key="asset.name"
 										class="px-2 py-1.5 text-right border-b border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-200">
 										<div>{{ params.currency }}{{ formatNumber(row.assets[asset.name] || 0) }}</div>
-										<div class="block text-[0.75em] mt-0.5 whitespace-nowrap">
-											<!-- Gains (different shades of green) -->
-											<span v-if="row.assetAppreciation && row.assetAppreciation[asset.name] > 0"
-												class="text-green-700 dark:text-green-400 mr-1"
-												:title="'Organic growth: ' + params.currency + formatNumber(row.assetAppreciation[asset.name])">
-												↑{{ params.currency }}{{ formatNumber(row.assetAppreciation[asset.name])
-												}}
+										<div v-if="getAssetTotalGains(row, asset.name) > 0 || getAssetTotalLosses(row, asset.name) > 0" class="block text-[0.75em] mt-0.5 whitespace-nowrap flex items-center justify-end gap-1">
+											<!-- Net change arrow (up if positive, down if negative) -->
+											<span v-if="getAssetNetChange(row, asset.name) > 0"
+												class="text-green-600 dark:text-green-400">
+												↑{{ params.currency }}{{ formatNumber(Math.abs(getAssetNetChange(row, asset.name))) }}
 											</span>
+											<span v-else-if="getAssetNetChange(row, asset.name) < 0"
+												class="text-red-600 dark:text-red-400">
+												↓{{ params.currency }}{{ formatNumber(Math.abs(getAssetNetChange(row, asset.name))) }}
+											</span>
+											<!-- Tooltip icon -->
 											<span
-												v-if="row.assetSavingsContributions && row.assetSavingsContributions[asset.name] > 0"
-												class="text-green-500 dark:text-green-300 mr-1"
-												:title="'From savings: ' + params.currency + formatNumber(row.assetSavingsContributions[asset.name])">
-												↑↑{{ params.currency }}{{
-												formatNumber(row.assetSavingsContributions[asset.name]) }}
-											</span>
-											<span
-												v-if="row.assetIncomingTransfers && row.assetIncomingTransfers[asset.name] > 0"
-												class="text-green-400 dark:text-green-200 mr-1"
-												:title="'From asset transfer: ' + params.currency + formatNumber(row.assetIncomingTransfers[asset.name])">
-												↑↑↑{{ params.currency }}{{
-												formatNumber(row.assetIncomingTransfers[asset.name]) }}
-											</span>
-											<!-- Losses (different shades of red) -->
-											<span
-												v-if="row.assetExpenseLosses && row.assetExpenseLosses[asset.name] > 0"
-												class="text-red-600 dark:text-red-400 mr-1"
-												:title="'Liquidated for expenses: ' + params.currency + formatNumber(row.assetExpenseLosses[asset.name])">
-												↓{{ params.currency }}{{
-												formatNumber(row.assetExpenseLosses[asset.name]) }}
-											</span>
-											<span
-												v-if="row.assetOutgoingTransfers && row.assetOutgoingTransfers[asset.name] > 0"
-												class="text-red-500 dark:text-red-300"
-												:title="'Transferred to another asset: ' + params.currency + formatNumber(row.assetOutgoingTransfers[asset.name])">
-												↓↓{{ params.currency }}{{
-												formatNumber(row.assetOutgoingTransfers[asset.name]) }}
-											</span>
+												v-if="getAssetTotalGains(row, asset.name) > 0 || getAssetTotalLosses(row, asset.name) > 0"
+												class="tooltip-icon inline-flex items-center justify-center w-3 h-3 rounded-full bg-gray-400 text-white text-[8px] font-normal cursor-help opacity-60 hover:opacity-100 transition-opacity"
+												:data-tooltip="getAssetTooltip(row, asset.name)">i</span>
 										</div>
 									</td>
 									<td
