@@ -11,6 +11,7 @@ export const EXAMPLE_DATA: FinancialParams = {
 	years: 40,
 	income: [{
 		type: 'range',
+		name: 'Salary',
 		years: 40,
 		payload: [
 			{ from: 0, amount: 100 * K },
@@ -20,6 +21,7 @@ export const EXAMPLE_DATA: FinancialParams = {
 	}],
 	expense: [{
 		type: 'fixed',
+		name: 'Living Expenses',
 		years: 40,
 		payload: {
 			start: 50 * K,

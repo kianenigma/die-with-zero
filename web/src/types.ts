@@ -14,6 +14,7 @@ export type IncomeType = ValueType;
 
 export interface IncomeFixed {
 	type: 'fixed';
+	name: string;
 	years: number;
 	payload: {
 		start: number;
@@ -28,12 +29,14 @@ export interface IncomeRangeItem {
 
 export interface IncomeRange {
 	type: 'range';
+	name: string;
 	years: number;
 	payload: IncomeRangeItem[];
 }
 
 export interface IncomeManual {
 	type: 'manual';
+	name: string;
 	years: number;
 	payload: number[];
 }
@@ -45,6 +48,7 @@ export type ExpenseType = ValueType;
 
 export interface ExpenseFixed {
 	type: 'fixed';
+	name: string;
 	years: number;
 	payload: {
 		start: number;
@@ -59,12 +63,14 @@ export interface ExpenseRangeItem {
 
 export interface ExpenseRange {
 	type: 'range';
+	name: string;
 	years: number;
 	payload: ExpenseRangeItem[];
 }
 
 export interface ExpenseManual {
 	type: 'manual';
+	name: string;
 	years: number;
 	payload: number[];
 }

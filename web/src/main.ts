@@ -67,6 +67,24 @@ const app = createApp(defineComponent({
 						} else {
 							result[key] = Array.isArray(storedValue) ? storedValue : defaultValue;
 						}
+
+						// Add names to income/expense if missing (backward compatibility)
+						if (key === 'income' && Array.isArray(result[key])) {
+							result[key] = result[key].map((inc: any, idx: number) => {
+								if (!inc.name) {
+									return { ...inc, name: `Income ${idx + 1}` };
+								}
+								return inc;
+							});
+						}
+						if (key === 'expense' && Array.isArray(result[key])) {
+							result[key] = result[key].map((exp: any, idx: number) => {
+								if (!exp.name) {
+									return { ...exp, name: `Expense ${idx + 1}` };
+								}
+								return exp;
+							});
+						}
 					}
 					// Handle objects (like income, expense, tax)
 					else if (typeof defaultValue === 'object' && defaultValue !== null) {
@@ -153,6 +171,7 @@ const app = createApp(defineComponent({
 			isResizing: false,
 			tempExpense: {
 				type: 'fixed',
+				name: 'New Expense',
 				years: 40, // Will be synced with params.years in mounted or watch
 				payload: {
 					start: 40000,
@@ -162,6 +181,7 @@ const app = createApp(defineComponent({
 			editingExpenseIndex: null,
 			tempIncome: {
 				type: 'fixed',
+				name: 'New Income',
 				years: 40,
 				payload: {
 					start: 50000,
@@ -433,6 +453,7 @@ const app = createApp(defineComponent({
 
 				this.tempIncome = {
 					type: 'fixed',
+					name: currentIncome.name,
 					years,
 					payload: {
 						start,
@@ -452,6 +473,7 @@ const app = createApp(defineComponent({
 
 				this.tempIncome = {
 					type: 'range',
+					name: currentIncome.name,
 					years,
 					payload: [
 						{ from: 0, amount: start }
@@ -467,6 +489,7 @@ const app = createApp(defineComponent({
 
 				this.tempIncome = {
 					type: 'manual',
+					name: currentIncome.name,
 					years,
 					payload
 				};
@@ -619,8 +642,18 @@ const app = createApp(defineComponent({
 			this.resetTempIncome();
 		},
 		resetTempIncome() {
+			// Generate a sensible default name based on existing incomes
+			const existingNames = this.params.income.map(inc => inc.name);
+			let defaultName = 'Income 1';
+			let counter = 1;
+			while (existingNames.includes(defaultName)) {
+				counter++;
+				defaultName = `Income ${counter}`;
+			}
+
 			this.tempIncome = {
 				type: 'fixed',
+				name: defaultName,
 				years: this.params.years,
 				payload: {
 					start: 50000,
@@ -645,6 +678,7 @@ const app = createApp(defineComponent({
 
 				this.tempExpense = {
 					type: 'fixed',
+					name: currentExpense.name,
 					years,
 					payload: {
 						start,
@@ -663,6 +697,7 @@ const app = createApp(defineComponent({
 
 				this.tempExpense = {
 					type: 'range',
+					name: currentExpense.name,
 					years,
 					payload: [
 						{ from: 0, amount: start }
@@ -677,6 +712,7 @@ const app = createApp(defineComponent({
 
 				this.tempExpense = {
 					type: 'manual',
+					name: currentExpense.name,
 					years,
 					payload
 				};
@@ -744,8 +780,18 @@ const app = createApp(defineComponent({
 			this.resetTempExpense();
 		},
 		resetTempExpense() {
+			// Generate a sensible default name based on existing expenses
+			const existingNames = this.params.expense.map(exp => exp.name);
+			let defaultName = 'Expense 1';
+			let counter = 1;
+			while (existingNames.includes(defaultName)) {
+				counter++;
+				defaultName = `Expense ${counter}`;
+			}
+
 			this.tempExpense = {
 				type: 'fixed',
+				name: defaultName,
 				years: this.params.years,
 				payload: {
 					start: 40000,
@@ -853,6 +899,81 @@ const app = createApp(defineComponent({
 		},
 		getEstimatedIncomeForTaxRange(taxRangeItem: { from: number; rate: number }): number {
 			return calculateEstimatedNetIncome(this.params.income, taxRangeItem);
+		},
+		getGrossIncomeTooltip(): string {
+			if (this.params.income.length === 0) {
+				return 'No income sources defined';
+			}
+			return this.params.income.map(inc => inc.name).join(' + ');
+		},
+		getNetIncomeTooltip(): string {
+			const grossIncomeNames = this.params.income.length > 0
+				? this.params.income.map(inc => inc.name).join(' + ')
+				: 'Gross Income';
+			return `Gross Income - Tax = (${grossIncomeNames}) - Tax`;
+		},
+		getExpensesTooltip(): string {
+			if (this.params.expense.length === 0) {
+				return 'No expenses defined';
+			}
+			return this.params.expense.map(exp => exp.name).join(' + ');
+		},
+		getYearFinalTurnoverTooltip(): string {
+			const grossIncomeNames = this.params.income.length > 0
+				? this.params.income.map(inc => inc.name).join(' + ')
+				: 'Gross Income';
+			const expenseNames = this.params.expense.length > 0
+				? this.params.expense.map(exp => exp.name).join(' + ')
+				: 'Total Expenses';
+			return `Gross Income - Total Expenses = (${grossIncomeNames}) - (${expenseNames})`;
+		},
+		getGrossIncomeTooltipForRow(row: ProjectionRow): string {
+			if (this.params.income.length === 0) {
+				return 'No income sources defined';
+			}
+			// Calculate individual income values for this year
+			const incomeValues = this.params.income.map(inc => {
+				const incomeResult = getIncomeForYear([inc], row.year);
+				const value = getIncomeValue(incomeResult);
+				return `${inc.name}: ${this.params.currency}${this.formatNumber(value)}`;
+			});
+			const total = row.grossIncome || 0;
+			return `${incomeValues.join(' + ')} = ${this.params.currency}${this.formatNumber(total)}`;
+		},
+		getNetIncomeTooltipForRow(row: ProjectionRow): string {
+			const grossIncomeNames = this.params.income.length > 0
+				? this.params.income.map(inc => inc.name).join(' + ')
+				: 'Gross Income';
+			const grossIncome = row.grossIncome || 0;
+			const taxRate = row.tax || 0;
+			const taxAmount = grossIncome * (taxRate / 100);
+			const netIncome = row.netIncome || 0;
+			return `(${grossIncomeNames}) - Tax = ${this.params.currency}${this.formatNumber(grossIncome)} - ${this.params.currency}${this.formatNumber(taxAmount)} = ${this.params.currency}${this.formatNumber(netIncome)}`;
+		},
+		getExpensesTooltipForRow(row: ProjectionRow): string {
+			if (this.params.expense.length === 0) {
+				return 'No expenses defined';
+			}
+			// Calculate individual expense values for this year
+			const expenseValues = this.params.expense.map(exp => {
+				const expenseResult = getExpenseForYear([exp], row.year);
+				const value = getExpenseValue(expenseResult);
+				return `${exp.name}: ${this.params.currency}${this.formatNumber(value)}`;
+			});
+			const total = row.expenses || 0;
+			return `${expenseValues.join(' + ')} = ${this.params.currency}${this.formatNumber(total)}`;
+		},
+		getYearFinalTurnoverTooltipForRow(row: ProjectionRow): string {
+			const grossIncome = row.grossIncome || 0;
+			const expenses = row.expenses || 0;
+			const turnover = row.savings || 0;
+			const grossIncomeNames = this.params.income.length > 0
+				? this.params.income.map(inc => inc.name).join(' + ')
+				: 'Gross Income';
+			const expenseNames = this.params.expense.length > 0
+				? this.params.expense.map(exp => exp.name).join(' + ')
+				: 'Total Expenses';
+			return `(${grossIncomeNames}) - (${expenseNames}) = ${this.params.currency}${this.formatNumber(grossIncome)} - ${this.params.currency}${this.formatNumber(expenses)} = ${this.params.currency}${this.formatNumber(turnover)}`;
 		},
 		updateChart() {
 			const chartCanvas = this.$refs.chart as HTMLCanvasElement | undefined;
