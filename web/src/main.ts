@@ -188,12 +188,33 @@ const app = createApp(defineComponent({
 					growth: 0.02
 				}
 			},
-			editingIncomeIndex: null
+			editingIncomeIndex: null,
+			excludedIncomeIndices: new Set<number>(),
+			excludedExpenseIndices: new Set<number>(),
+			excludedAssetIndices: new Set<number>(),
+			incomeFormCollapsed: false,
+			expenseFormCollapsed: false
 		};
 	},
 	computed: {
 		projection(): ProjectionRow[] {
-			return calculateProjection(this.params);
+			// Create a modified params object with excluded items filtered out
+			const excludedAssetNames = new Set(
+				this.params.assets
+					.filter((_, index) => this.excludedAssetIndices.has(index))
+					.map(a => a.name)
+			);
+
+			const modifiedParams = {
+				...this.params,
+				income: this.params.income.filter((_, index) => !this.excludedIncomeIndices.has(index)),
+				expense: this.params.expense.filter((_, index) => !this.excludedExpenseIndices.has(index)),
+				assets: this.params.assets.filter((_, index) => !this.excludedAssetIndices.has(index)),
+				transactions: this.params.transactions.filter(t =>
+					!excludedAssetNames.has(t.fromAsset) && !excludedAssetNames.has(t.toAsset)
+				)
+			};
+			return calculateProjection(modifiedParams);
 		},
 		dieWithZero(): DieWithZeroAnalysis {
 			return calculateDieWithZeroAnalysis(this.params);
@@ -249,6 +270,18 @@ const app = createApp(defineComponent({
 		'params.years'() {
 			// Sync income years when projection years change
 			this.syncIncomeYears();
+		},
+		editingIncomeIndex(newIndex) {
+			// Auto-expand form when editing
+			if (newIndex !== null) {
+				this.incomeFormCollapsed = false;
+			}
+		},
+		editingExpenseIndex(newIndex) {
+			// Auto-expand form when editing
+			if (newIndex !== null) {
+				this.expenseFormCollapsed = false;
+			}
 		},
 		'params.assets': {
 			handler() {
@@ -372,6 +405,17 @@ const app = createApp(defineComponent({
 		},
 		removeAsset(index: number) {
 			this.params.assets.splice(index, 1);
+			// Clean up excluded indices
+			const newExcluded = new Set<number>();
+			this.excludedAssetIndices.forEach(i => {
+				if (i < index) {
+					newExcluded.add(i);
+				} else if (i > index) {
+					newExcluded.add(i - 1);
+				}
+				// i === index is removed, so don't add it
+			});
+			this.excludedAssetIndices = newExcluded;
 		},
 		addMilestone() {
 			this.params.milestones.push(0);
@@ -631,6 +675,18 @@ const app = createApp(defineComponent({
 		},
 		removeIncome(index: number) {
 			this.params.income.splice(index, 1);
+			// Clean up excluded indices
+			const newExcluded = new Set<number>();
+			this.excludedIncomeIndices.forEach(i => {
+				if (i < index) {
+					newExcluded.add(i);
+				} else if (i > index) {
+					newExcluded.add(i - 1);
+				}
+				// i === index is removed, so don't add it
+			});
+			this.excludedIncomeIndices = newExcluded;
+
 			if (this.editingIncomeIndex === index) {
 				this.cancelEditIncome();
 			} else if (this.editingIncomeIndex !== null && this.editingIncomeIndex > index) {
@@ -769,6 +825,18 @@ const app = createApp(defineComponent({
 		},
 		removeExpense(index: number) {
 			this.params.expense.splice(index, 1);
+			// Clean up excluded indices
+			const newExcluded = new Set<number>();
+			this.excludedExpenseIndices.forEach(i => {
+				if (i < index) {
+					newExcluded.add(i);
+				} else if (i > index) {
+					newExcluded.add(i - 1);
+				}
+				// i === index is removed, so don't add it
+			});
+			this.excludedExpenseIndices = newExcluded;
+
 			if (this.editingExpenseIndex === index) {
 				this.cancelEditExpense();
 			} else if (this.editingExpenseIndex !== null && this.editingExpenseIndex > index) {
@@ -778,6 +846,36 @@ const app = createApp(defineComponent({
 		cancelEditExpense() {
 			this.editingExpenseIndex = null;
 			this.resetTempExpense();
+		},
+		toggleExcludeIncome(index: number) {
+			if (this.excludedIncomeIndices.has(index)) {
+				this.excludedIncomeIndices.delete(index);
+			} else {
+				this.excludedIncomeIndices.add(index);
+			}
+		},
+		isIncomeExcluded(index: number): boolean {
+			return this.excludedIncomeIndices.has(index);
+		},
+		toggleExcludeExpense(index: number) {
+			if (this.excludedExpenseIndices.has(index)) {
+				this.excludedExpenseIndices.delete(index);
+			} else {
+				this.excludedExpenseIndices.add(index);
+			}
+		},
+		isExpenseExcluded(index: number): boolean {
+			return this.excludedExpenseIndices.has(index);
+		},
+		toggleExcludeAsset(index: number) {
+			if (this.excludedAssetIndices.has(index)) {
+				this.excludedAssetIndices.delete(index);
+			} else {
+				this.excludedAssetIndices.add(index);
+			}
+		},
+		isAssetExcluded(index: number): boolean {
+			return this.excludedAssetIndices.has(index);
 		},
 		resetTempExpense() {
 			// Generate a sensible default name based on existing expenses
