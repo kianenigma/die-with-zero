@@ -171,11 +171,13 @@ export interface DieWithZeroAnalysis {
 	currentFinalWorth: number;
 }
 
+export type SidebarMode = 'collapsed' | 'normal' | 'fullscreen';
+
 export interface AppData {
 	params: FinancialParams;
 	chartInstance: any;
 	tooltips: Record<string, string>;
-	sidebarCollapsed: boolean;
+	sidebarMode: SidebarMode;
 	darkTheme: boolean;
 	sidebarWidth: number;
 	isResizing: boolean;
@@ -183,6 +185,8 @@ export interface AppData {
 	editingExpenseIndex: number | null;
 	tempIncome: Income;
 	editingIncomeIndex: number | null;
+	tempAsset: Asset;
+	editingAssetIndex: number | null;
 }
 
 export interface ProjectionOptions {

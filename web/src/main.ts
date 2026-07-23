@@ -29,7 +29,9 @@ import type {
 	AppData,
 	IncomeType,
 	ExpenseType,
-	TaxType
+	TaxType,
+	SidebarMode,
+	Asset
 } from './types';
 
 // TODO: year 0 calculation is still a bit off
@@ -128,23 +130,35 @@ const app = createApp(defineComponent({
 		};
 
 		const loadSidebarWidth = (): number => {
-			const DEFAULT_WIDTH = 500;
-			const MIN_WIDTH = 300;
-			const MAX_WIDTH = 800;
+			const DEFAULT_WIDTH = 480;
+			const MIN_WIDTH = 320;
+			const MAX_WIDTH = 1200;
 
 			try {
 				const stored = localStorage.getItem('sidebar-width');
 				if (stored) {
 					const parsed = parseInt(stored, 10);
-					// Validate the parsed value
-					if (!isNaN(parsed) && parsed >= MIN_WIDTH && parsed <= MAX_WIDTH) {
-						return parsed;
+					if (!isNaN(parsed)) {
+						// Clamp to sane bounds regardless of what was stored
+						return Math.min(Math.max(parsed, MIN_WIDTH), MAX_WIDTH);
 					}
 				}
 			} catch (error) {
 				console.error('Error loading sidebar width:', error);
 			}
 			return DEFAULT_WIDTH;
+		};
+
+		const loadSidebarMode = (): SidebarMode => {
+			try {
+				const stored = localStorage.getItem('sidebar-mode');
+				if (stored === 'collapsed' || stored === 'normal' || stored === 'fullscreen') {
+					return stored;
+				}
+			} catch (error) {
+				console.error('Error loading sidebar mode:', error);
+			}
+			return 'normal';
 		};
 
 		const loadDarkTheme = (): boolean => {
@@ -165,7 +179,7 @@ const app = createApp(defineComponent({
 			params: loadFromStorage(),
 			chartInstance: null,
 			tooltips: TOOLTIPS,
-			sidebarCollapsed: false,
+			sidebarMode: loadSidebarMode(),
 			darkTheme: loadDarkTheme(),
 			sidebarWidth: loadSidebarWidth(),
 			isResizing: false,
@@ -189,11 +203,19 @@ const app = createApp(defineComponent({
 				}
 			},
 			editingIncomeIndex: null,
+			tempAsset: {
+				name: 'Asset 1',
+				amount: 0,
+				rate: 0,
+				liquid: true
+			},
+			editingAssetIndex: null,
 			excludedIncomeIndices: new Set<number>(),
 			excludedExpenseIndices: new Set<number>(),
 			excludedAssetIndices: new Set<number>(),
 			incomeFormCollapsed: false,
-			expenseFormCollapsed: false
+			expenseFormCollapsed: false,
+			assetFormCollapsed: false
 		};
 	},
 	computed: {
@@ -221,6 +243,28 @@ const app = createApp(defineComponent({
 		},
 		incomeValidation(): { ok: boolean; reason?: string } {
 			return validateIncome(this.params.income);
+		},
+		sidebarStyle(): Record<string, string | number> {
+			if (this.sidebarMode === 'collapsed') {
+				return { width: '0px', flexShrink: 0 };
+			}
+			if (this.sidebarMode === 'fullscreen') {
+				return { width: '100%', flexShrink: 0 };
+			}
+			return { width: this.sidebarWidth + 'px', flexShrink: 0 };
+		},
+		assetValidation(): { ok: boolean; reason?: string } {
+			const name = this.tempAsset.name?.trim();
+			if (!name) {
+				return { ok: false, reason: 'Asset name cannot be empty' };
+			}
+			const clashes = this.params.assets.some(
+				(asset, index) => index !== this.editingAssetIndex && asset.name === name
+			);
+			if (clashes) {
+				return { ok: false, reason: 'Asset name must be unique' };
+			}
+			return { ok: true };
 		},
 		expenseValidation(): { ok: boolean; reason?: string } {
 			return validateExpense(this.params.expense);
@@ -283,6 +327,12 @@ const app = createApp(defineComponent({
 				this.expenseFormCollapsed = false;
 			}
 		},
+		editingAssetIndex(newIndex) {
+			// Auto-expand form when editing
+			if (newIndex !== null) {
+				this.assetFormCollapsed = false;
+			}
+		},
 		'params.assets': {
 			handler() {
 				// Cleanup transactions when assets are removed
@@ -301,6 +351,18 @@ const app = createApp(defineComponent({
 			this.$nextTick(() => {
 				this.updateChart();
 			});
+		},
+		sidebarMode(newMode: SidebarMode) {
+			// Persist the chosen layout mode
+			try {
+				localStorage.setItem('sidebar-mode', newMode);
+			} catch (error) {
+				console.error('Error saving sidebar mode:', error);
+			}
+			// Redraw the chart once the width transition has settled
+			setTimeout(() => {
+				this.updateChart();
+			}, 320);
 		},
 		darkTheme(newValue: boolean) {
 			// Save dark theme to localStorage
@@ -335,12 +397,13 @@ const app = createApp(defineComponent({
 		}
 	},
 	methods: {
-		toggleSidebar() {
-			this.sidebarCollapsed = !this.sidebarCollapsed;
-			// Wait for transition to complete before updating chart
-			setTimeout(() => {
-				this.updateChart();
-			}, 300);
+		toggleCollapse() {
+			// Collapse hides the panel entirely; clicking again restores the normal width.
+			this.sidebarMode = this.sidebarMode === 'collapsed' ? 'normal' : 'collapsed';
+		},
+		toggleFullscreen() {
+			// Fullscreen expands the panel across the whole viewport; clicking again restores normal.
+			this.sidebarMode = this.sidebarMode === 'fullscreen' ? 'normal' : 'fullscreen';
 		},
 		toggleTheme() {
 			this.darkTheme = !this.darkTheme;
@@ -400,8 +463,36 @@ const app = createApp(defineComponent({
 			};
 			reader.readAsText(file);
 		},
-		addAsset() {
-			this.params.assets.push({ name: 'New Asset', amount: 0, rate: 0, liquid: true });
+		saveAsset() {
+			if (!this.assetValidation.ok) {
+				alert(`Cannot save asset: ${this.assetValidation.reason}`);
+				return;
+			}
+
+			const asset = JSON.parse(JSON.stringify(this.tempAsset));
+			asset.name = asset.name.trim();
+
+			if (this.editingAssetIndex !== null) {
+				// Update existing, keeping any transactions that referenced the old name in sync
+				const oldName = this.params.assets[this.editingAssetIndex].name;
+				this.params.assets[this.editingAssetIndex] = asset;
+				if (oldName !== asset.name) {
+					(this.params.transactions || []).forEach(t => {
+						if (t.fromAsset === oldName) t.fromAsset = asset.name;
+						if (t.toAsset === oldName) t.toAsset = asset.name;
+					});
+				}
+				this.editingAssetIndex = null;
+			} else {
+				// Add new
+				this.params.assets.push(asset);
+			}
+
+			this.resetTempAsset();
+		},
+		editAsset(index: number) {
+			this.editingAssetIndex = index;
+			this.tempAsset = JSON.parse(JSON.stringify(this.params.assets[index]));
 		},
 		removeAsset(index: number) {
 			this.params.assets.splice(index, 1);
@@ -416,6 +507,33 @@ const app = createApp(defineComponent({
 				// i === index is removed, so don't add it
 			});
 			this.excludedAssetIndices = newExcluded;
+
+			if (this.editingAssetIndex === index) {
+				this.cancelEditAsset();
+			} else if (this.editingAssetIndex !== null && this.editingAssetIndex > index) {
+				this.editingAssetIndex--;
+			}
+		},
+		cancelEditAsset() {
+			this.editingAssetIndex = null;
+			this.resetTempAsset();
+		},
+		resetTempAsset() {
+			// Generate a sensible default name based on existing assets
+			const existingNames = this.params.assets.map(asset => asset.name);
+			let defaultName = 'Asset 1';
+			let counter = 1;
+			while (existingNames.includes(defaultName)) {
+				counter++;
+				defaultName = `Asset ${counter}`;
+			}
+
+			this.tempAsset = {
+				name: defaultName,
+				amount: 0,
+				rate: 0,
+				liquid: true
+			};
 		},
 		addMilestone() {
 			this.params.milestones.push(0);
@@ -457,6 +575,8 @@ const app = createApp(defineComponent({
 			);
 		},
 		startResize(event: MouseEvent) {
+			// Dragging only makes sense in the normal (docked) mode.
+			if (this.sidebarMode !== 'normal') return;
 			this.isResizing = true;
 			document.body.classList.add('resizing');
 			event.preventDefault();
@@ -464,15 +584,14 @@ const app = createApp(defineComponent({
 		handleResize(event: MouseEvent) {
 			if (!this.isResizing) return;
 
-			const minWidth = 300;
-			const maxWidth = 800;
-			const newWidth = Math.min(Math.max(event.clientX, minWidth), maxWidth);
-
-			this.sidebarWidth = newWidth;
-			// Update CSS variable for fixed resize handle position
-			document.documentElement.style.setProperty('--sidebar-width', `${newWidth}px`);
+			// The sidebar is anchored to the left edge, so clientX is the desired width.
+			// Keep a minimum, and leave room for the results pane so it never fully vanishes.
+			const minWidth = 320;
+			const maxWidth = Math.max(minWidth, window.innerWidth - 360);
+			this.sidebarWidth = Math.min(Math.max(event.clientX, minWidth), maxWidth);
 		},
 		stopResize() {
+			if (!this.isResizing) return;
 			this.isResizing = false;
 			document.body.classList.remove('resizing');
 		},
@@ -1087,7 +1206,7 @@ const app = createApp(defineComponent({
 				: [`↓ Total Expenses: ${this.params.currency}${this.formatNumber(expenses)}`];
 
 			// Color the turnover number: green if positive, red if negative
-			const turnoverColor = turnover >= 0 ? '#10b981' : '#ef4444'; // green-500 or red-500
+			const turnoverColor = turnover >= 0 ? '#3c7a5a' : '#b23a2c'; // green-500 or red-500
 			const turnoverText = `= <span style="color: ${turnoverColor}">${this.params.currency}${this.formatNumber(Math.abs(turnover))}</span>`;
 
 			return `Year Final Turnover:\n${incomeLines.join('\n')}\n\n${expenseLines.join('\n')}\n\n${turnoverText}`;
@@ -1159,7 +1278,7 @@ const app = createApp(defineComponent({
 
 			// Turnover calculation with colored number
 			if (gainItems.length > 0 || lossItems.length > 0) {
-				const turnoverColor = netChange >= 0 ? '#10b981' : '#ef4444'; // green-500 or red-500
+				const turnoverColor = netChange >= 0 ? '#3c7a5a' : '#b23a2c'; // green-500 or red-500
 				const turnoverText = `Turnover: ${this.params.currency}${this.formatNumber(totalGains)} - ${this.params.currency}${this.formatNumber(totalLosses)} = <span style="color: ${turnoverColor}">${this.params.currency}${this.formatNumber(Math.abs(netChange))}</span>`;
 				parts.push(turnoverText);
 			}
@@ -1181,15 +1300,21 @@ const app = createApp(defineComponent({
 
 			const years = this.projection.map(p => p.year);
 
+			// Theme-aware palette
+			const isDark = document.documentElement.classList.contains('dark');
+			const textColor = isDark ? '#a79c89' : '#8a7f6e';
+			const gridColor = isDark ? '#383127' : '#e4dccd';
+			const netWorthColor = isDark ? '#f1ead9' : '#221e18';
+
 			// Create datasets for each asset
 			const datasets = this.params.assets.map((asset, index) => {
 				const colors = [
-					'#6b8ba8', // dim blue
-					'#7a9b7f', // dim green
-					'#b37d7d', // dim red
-					'#9b8fb3', // dim purple
-					'#b3956b', // dim orange/brown
-					'#7db3ad'  // dim teal
+					'#c0553b', // terracotta
+					'#3c7a5a', // forest green
+					'#b3873b', // ochre
+					'#4c6e8a', // slate blue
+					'#8a5a7a', // plum
+					'#5c8a84'  // muted teal
 				];
 				return {
 					label: asset.name,
@@ -1206,17 +1331,12 @@ const app = createApp(defineComponent({
 			datasets.push({
 				label: 'Total Net Worth',
 				data: this.projection.map(p => p.totalNetWorth),
-				borderColor: '#475569',
-				backgroundColor: '#47556920',
+				borderColor: netWorthColor,
+				backgroundColor: netWorthColor + '20',
 				borderWidth: 3,
 				tension: 0.4,
 				fill: false
 			} as any);
-
-			// Get theme colors
-			const isDark = document.documentElement.classList.contains('dark');
-			const textColor = isDark ? '#9ca3af' : '#6b7280';
-			const gridColor = isDark ? '#374151' : '#e5e7eb';
 
 			// Create milestone annotations only if annotation plugin is available
 			const chartOptions: any = {
@@ -1298,14 +1418,14 @@ const app = createApp(defineComponent({
 							type: 'line',
 							yMin: milestone,
 							yMax: milestone,
-							borderColor: '#9a6b65',
+							borderColor: '#b3873b',
 							borderWidth: 2,
 							borderDash: [5, 5],
 							label: {
 								display: true,
 								content: '€' + (milestone / 1000000).toFixed(1) + 'M',
 								position: 'end',
-								backgroundColor: '#9a6b65'
+								backgroundColor: '#b3873b'
 							}
 						};
 					}
@@ -1329,9 +1449,6 @@ const app = createApp(defineComponent({
 	mounted() {
 		// Apply dark theme on load
 		document.documentElement.classList.toggle('dark', this.darkTheme);
-
-		// Initialize CSS variable for sidebar width
-		document.documentElement.style.setProperty('--sidebar-width', `${this.sidebarWidth}px`);
 
 		this.$nextTick(() => {
 			this.updateChart();

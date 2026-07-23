@@ -6,6 +6,13 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Die With Zero - Financial Planner</title>
 
+	<!-- Fonts: Fraunces (display serif), Hanken Grotesk (UI), IBM Plex Mono (figures) -->
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link
+		href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+		rel="stylesheet">
+
 	<!-- Tailwind CSS -->
 	<script src="https://cdn.tailwindcss.com"></script>
 	<script>
@@ -14,13 +21,18 @@
 			theme: {
 				extend: {
 					colors: {
-						primary: '#4a5568',
-						secondary: '#2d3748',
-						danger: '#c7553e',
-						dangerHover: '#a84431',
+						primary: '#c0553b',
+						secondary: '#9e3f2a',
+						accent: '#c0553b',
+						accentHover: '#a5432d',
+						danger: '#b23a2c',
+						dangerHover: '#8f2d21',
+						ink: '#221e18',
 					},
 					fontFamily: {
-						sans: ['-apple-system', 'BlinkMacSystemFont', 'SF Pro Text', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+						sans: ['"Hanken Grotesk"', 'system-ui', 'sans-serif'],
+						display: ['Fraunces', 'Georgia', 'serif'],
+						mono: ['"IBM Plex Mono"', 'ui-monospace', 'monospace'],
 					}
 				}
 			}
@@ -28,230 +40,233 @@
 	</script>
 
 	<style>
-		/* Minimal & Unified Theme */
+		/* ============================================================
+		   "The Ledger" — warm editorial theme (replaces liquid glass)
+		   ============================================================ */
 		:root {
-			--bg-body: #f8f9fa;
-			--bg-panel: #ffffff;
-			--bg-card: #ffffff;
-			--border-color: #e2e8f0;
-			--text-primary: #1a202c;
-			--text-secondary: #718096;
-			--primary-color: #3b82f6;
-			--primary-hover: #2563eb;
-			--danger-color: #ef4444;
-			--radius-lg: 12px;
-			--radius-md: 8px;
-			--shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-			--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+			--paper: #f4f0e7;
+			--surface: #fcfaf4;
+			--surface-2: #f6f1e7;
+			--hairline: #e4dccd;
+			--hairline-strong: #d6cbb6;
+			--ink: #221e18;
+			--muted: #746b5c;
+			--accent: #c0553b;
+			--accent-soft: rgba(192, 85, 59, 0.10);
+			--positive: #3c7a5a;
+			--negative: #b23a2c;
+			--radius-lg: 14px;
+			--radius-md: 9px;
+			--font-body: "Hanken Grotesk", system-ui, sans-serif;
+			--font-display: "Fraunces", Georgia, serif;
+			--font-mono: "IBM Plex Mono", ui-monospace, monospace;
 		}
 
 		.dark {
-			--bg-body: #111827;
-			--bg-panel: #1f2937;
-			--bg-card: #1f2937;
-			--border-color: #374151;
-			--text-primary: #f9fafb;
-			--text-secondary: #9ca3af;
+			--paper: #16130e;
+			--surface: #211c15;
+			--surface-2: #272117;
+			--hairline: #383127;
+			--hairline-strong: #493f30;
+			--ink: #f1ead9;
+			--muted: #a79c89;
+			--accent: #d97759;
+			--accent-soft: rgba(217, 119, 89, 0.14);
+			--positive: #6fb68f;
+			--negative: #e07b6b;
 		}
 
 		* {
-			font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-			letter-spacing: -0.01em;
+			letter-spacing: normal;
+		}
+
+		html,
+		body {
+			height: 100%;
 		}
 
 		body {
+			font-family: var(--font-body);
 			font-size: 14px;
-			line-height: 1.6;
-			background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);
+			line-height: 1.55;
+			color: var(--ink);
+			background-color: var(--paper);
+			background-image:
+				radial-gradient(1100px 520px at 82% -12%, var(--accent-soft), transparent 60%),
+				url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+			background-attachment: fixed;
+			-webkit-font-smoothing: antialiased;
+			-moz-osx-font-smoothing: grayscale;
+			text-rendering: optimizeLegibility;
 		}
 
-		.dark body {
-			background: linear-gradient(135deg, #0d0d0d 0%, #1a1a1a 100%);
+		/* Typography */
+		h1, h2, h3, h4, h5, h6 {
+			font-family: var(--font-display);
+			font-weight: 500;
+			letter-spacing: -0.01em;
+			color: var(--ink);
 		}
 
-		/* Glassmorphism effects */
+		/* Small uppercase kickers read better in the grotesque than the serif */
+		.uppercase {
+			font-family: var(--font-body);
+			font-weight: 600;
+		}
+
+		.font-display {
+			font-family: var(--font-display);
+		}
+
+		.font-mono {
+			font-family: var(--font-mono);
+			font-variant-numeric: tabular-nums;
+		}
+
+		/* Surfaces — flat, warm, hairline-bordered (formerly frosted glass) */
 		.glass-panel {
-			background: rgba(255, 255, 255, 0.7);
-			backdrop-filter: blur(30px) saturate(180%);
-			-webkit-backdrop-filter: blur(30px) saturate(180%);
-			border: 1px solid rgba(255, 255, 255, 0.3);
-			box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06),
-				inset 0 1px 1px rgba(255, 255, 255, 0.8);
-		}
-
-		.dark .glass-panel {
-			background: rgba(20, 20, 22, 0.75);
-			border: 1px solid rgba(255, 255, 255, 0.08);
-			box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5),
-				inset 0 1px 1px rgba(255, 255, 255, 0.05);
+			background: var(--surface);
+			border: 1px solid var(--hairline);
+			box-shadow: none;
 		}
 
 		.glass-card {
-			background: rgba(255, 255, 255, 0.8);
-			backdrop-filter: blur(20px) saturate(180%);
-			-webkit-backdrop-filter: blur(20px) saturate(180%);
-			border: 1px solid rgba(0, 0, 0, 0.06);
-			box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04),
-				inset 0 1px 0 rgba(255, 255, 255, 0.9);
-			transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-		}
-
-		.dark .glass-card {
-			background: rgba(30, 30, 32, 0.8);
-			border: 1px solid rgba(255, 255, 255, 0.08);
-			box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4),
-				inset 0 1px 0 rgba(255, 255, 255, 0.05);
+			background: var(--surface);
+			border: 1px solid var(--hairline);
+			border-radius: var(--radius-lg) !important;
+			box-shadow: 0 1px 2px rgba(33, 30, 24, 0.04);
+			transition: border-color 0.18s ease, box-shadow 0.18s ease;
 		}
 
 		.glass-card:hover {
-			transform: translateY(-2px);
-			box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+			border-color: var(--hairline-strong);
+			box-shadow: 0 2px 10px rgba(33, 30, 24, 0.06);
+		}
+
+		.dark .glass-card {
+			box-shadow: none;
 		}
 
 		.dark .glass-card:hover {
-			box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+			box-shadow: none;
 		}
 
 		.glass-input {
-			background: rgba(255, 255, 255, 0.6);
-			backdrop-filter: blur(10px);
-			-webkit-backdrop-filter: blur(10px);
-			border: 1px solid rgba(0, 0, 0, 0.08);
-			transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+			background: var(--surface);
+			border: 1px solid var(--hairline-strong);
+			border-radius: var(--radius-md) !important;
+			color: var(--ink);
+			transition: border-color 0.15s ease, box-shadow 0.15s ease;
 		}
 
-		.dark .glass-input {
-			background: rgba(40, 40, 42, 0.6);
-			border: 1px solid rgba(255, 255, 255, 0.1);
+		.glass-input::placeholder {
+			color: var(--muted);
+			opacity: 0.7;
 		}
 
 		.glass-input:focus {
-			background: rgba(255, 255, 255, 0.9);
-			border-color: rgba(0, 122, 255, 0.5);
-			box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1),
-				0 2px 8px rgba(0, 122, 255, 0.2);
 			outline: none;
+			border-color: var(--accent);
+			box-shadow: 0 0 0 3px var(--accent-soft);
 		}
 
-		.dark .glass-input:focus {
-			background: rgba(50, 50, 52, 0.9);
-			border-color: rgba(10, 132, 255, 0.6);
-			box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.15),
-				0 2px 8px rgba(10, 132, 255, 0.3);
+		input, select, textarea {
+			font-family: var(--font-body);
+			font-size: 13px;
+			color: var(--ink);
 		}
 
+		button {
+			font-family: var(--font-body);
+			font-weight: 500;
+			transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease, opacity 0.18s ease;
+		}
+
+		/* Kill the "liquid" bounce on hover/press */
+		button:hover,
+		button:active {
+			transform: none;
+		}
+
+		/* Ledger-style results table */
+		table {
+			font-family: var(--font-mono);
+			font-variant-numeric: tabular-nums;
+		}
+
+		tbody tr:nth-child(even) {
+			background: var(--surface-2);
+		}
+
+		tbody tr:hover {
+			background: var(--accent-soft);
+		}
+
+		/* Tooltip — solid ink, no blur */
 		.tooltip-popup {
 			position: fixed;
-			background: rgba(50, 50, 52, 0.95);
-			backdrop-filter: blur(20px);
-			-webkit-backdrop-filter: blur(20px);
-			color: #f7fafc;
-			padding: 10px 14px;
-			border-radius: 10px;
+			background: var(--ink);
+			color: var(--paper);
+			padding: 9px 13px;
+			border-radius: 8px;
+			font-family: var(--font-body);
 			font-size: 12px;
 			font-weight: 400;
 			white-space: pre-line;
 			z-index: 999999;
-			max-width: 350px;
+			max-width: 340px;
 			width: max-content;
-			box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+			box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
 			pointer-events: none;
 			display: none;
-			line-height: 1.6;
+			line-height: 1.55;
 		}
 
 		.tooltip-popup::before {
 			content: '';
 			position: absolute;
 			border: 6px solid transparent;
-			border-right-color: rgba(50, 50, 52, 0.95);
+			border-right-color: var(--ink);
 			left: -12px;
 			top: 50%;
 			transform: translateY(-50%);
 		}
 
+		/* Collapsed sidebar: fully hidden, no width */
 		.sidebar.collapsed {
-			flex: 0 0 0;
 			padding: 0;
 			overflow: hidden;
 			opacity: 0;
 			border-right: none;
 		}
 
-		.resize-handle-header {
-			position: fixed;
-			top: 11px;
-			left: calc(var(--sidebar-width) - 16px);
-			width: 32px;
-			height: 32px;
+		/* Vertical drag bar sitting on the sidebar's right edge */
+		.resize-bar {
+			flex: 0 0 8px;
+			width: 8px;
+			align-self: stretch;
 			cursor: col-resize;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			z-index: 1001;
-			transition: left 0.3s;
+			position: relative;
+			z-index: 200;
+			background: transparent;
 		}
 
-		.resize-handle-header::before {
+		.resize-bar::before {
 			content: '';
 			position: absolute;
-			width: 32px;
-			height: 32px;
-			background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(240, 240, 245, 0.95) 100%);
-			border: 2px solid rgba(100, 116, 139, 0.2);
-			border-radius: 50%;
-			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1),
-				inset 0 1px 1px rgba(255, 255, 255, 0.8);
-			transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+			top: 0;
+			bottom: 0;
+			left: 50%;
+			transform: translateX(-50%);
+			width: 1px;
+			background: var(--hairline-strong);
+			transition: background 0.15s, width 0.15s;
 		}
 
-		.resize-handle-header::after {
-			content: '⋮';
-			position: relative;
-			font-size: 16px;
-			color: rgba(100, 116, 139, 0.6);
-			font-weight: bold;
-			line-height: 1;
-			z-index: 1;
-			transition: all 0.2s;
-		}
-
-		.resize-handle-header:hover::before,
-		.resize-handle-header.resizing::before {
-			background: linear-gradient(135deg, rgba(59, 130, 246, 0.95) 0%, rgba(37, 99, 235, 1) 100%);
-			border-color: rgba(59, 130, 246, 0.4);
-			box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3),
-				inset 0 1px 1px rgba(255, 255, 255, 0.3);
-			transform: scale(1.1);
-		}
-
-		.resize-handle-header:hover::after,
-		.resize-handle-header.resizing::after {
-			color: rgba(255, 255, 255, 0.9);
-		}
-
-		.dark .resize-handle-header::before {
-			background: linear-gradient(135deg, rgba(30, 30, 32, 0.95) 0%, rgba(20, 20, 22, 1) 100%);
-			border-color: rgba(148, 163, 184, 0.2);
-			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3),
-				inset 0 1px 1px rgba(255, 255, 255, 0.1);
-		}
-
-		.dark .resize-handle-header::after {
-			color: rgba(148, 163, 184, 0.7);
-		}
-
-		.dark .resize-handle-header:hover::before,
-		.dark .resize-handle-header.resizing::before {
-			background: linear-gradient(135deg, rgba(59, 130, 246, 0.95) 0%, rgba(37, 99, 235, 1) 100%);
-			border-color: rgba(59, 130, 246, 0.5);
-			box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4),
-				inset 0 1px 1px rgba(255, 255, 255, 0.2);
-		}
-
-		.dark .resize-handle-header:hover::after,
-		.dark .resize-handle-header.resizing::after {
-			color: rgba(255, 255, 255, 0.9);
+		.resize-bar:hover::before,
+		.resize-bar.resizing::before {
+			width: 3px;
+			background: var(--accent);
 		}
 
 		body.resizing {
@@ -259,40 +274,54 @@
 			user-select: none;
 		}
 
-		h1,
-		h2,
-		h3,
-		h4,
-		h5,
-		h6 {
-			font-weight: 600;
-			letter-spacing: -0.02em;
+		/* Fullscreen sidebar: flow sections into balanced newspaper columns */
+		.sidebar.fullscreen .sidebar-content {
+			column-width: 360px;
+			column-gap: 2.5rem;
+			max-width: 1600px;
+			margin: 0 auto;
 		}
 
-		input,
-		select,
-		button {
-			font-size: 13px;
+		.sidebar.fullscreen .sidebar-content>* {
+			break-inside: avoid;
 		}
 
-		button {
-			font-weight: 500;
-			transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+		.sidebar.fullscreen .sidebar-content>h2 {
+			break-after: avoid;
 		}
 
-		button:hover {
-			transform: translateY(-1px);
+		/* Scrollbars */
+		.custom-scrollbar::-webkit-scrollbar,
+		.sidebar::-webkit-scrollbar,
+		body ::-webkit-scrollbar {
+			width: 10px;
+			height: 10px;
 		}
 
-		button:active {
-			transform: translateY(0);
+		.custom-scrollbar::-webkit-scrollbar-thumb,
+		.sidebar::-webkit-scrollbar-thumb,
+		body ::-webkit-scrollbar-thumb {
+			background: var(--hairline-strong);
+			border-radius: 8px;
+			border: 2px solid transparent;
+			background-clip: padding-box;
 		}
 
-		/* Smooth animations */
+		.custom-scrollbar::-webkit-scrollbar-thumb:hover,
+		.sidebar::-webkit-scrollbar-thumb:hover {
+			background: var(--muted);
+			background-clip: padding-box;
+		}
+
+		::-webkit-scrollbar-track {
+			background: transparent;
+		}
+
+		/* Page-load reveal */
 		@keyframes fadeIn {
 			from {
 				opacity: 0;
-				transform: translateY(10px);
+				transform: translateY(8px);
 			}
 
 			to {
@@ -302,9 +331,10 @@
 		}
 
 		.animate-in {
-			animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+			animation: fadeIn 0.4s cubic-bezier(0.2, 0, 0.2, 1);
 		}
 	</style>
+
 </head>
 
 <body>
@@ -312,14 +342,45 @@
 	<div id="app">
 		<!-- Fixed Header -->
 		<header
-			class="fixed top-0 left-0 right-0 h-14 glass-panel border-b border-gray-200 dark:border-gray-700 z-[1000] flex items-center px-4 gap-4">
-			<!-- Title -->
-			<h1 class="text-gray-900 dark:text-white text-lg font-semibold tracking-tight whitespace-nowrap">D I E - W I
-				T H - Z E R O</h1>
+			class="fixed top-0 left-0 right-0 h-14 glass-panel z-[1000] flex items-center px-5 gap-4">
+			<!-- Masthead -->
+			<div class="flex items-baseline gap-2.5 whitespace-nowrap select-none">
+				<span class="inline-block w-2.5 h-2.5 rounded-[2px] bg-accent translate-y-[1px]"></span>
+				<h1 class="font-display text-[1.4rem] leading-none font-semibold tracking-[-0.01em] text-gray-900 dark:text-white">
+					Die&nbsp;with&nbsp;Zero</h1>
+				<span class="hidden md:inline font-mono text-[10px] uppercase tracking-[0.18em] text-[color:var(--muted)] ml-1">Planner</span>
+			</div>
 
-			<!-- Resize Handle -->
-			<div v-if="!sidebarCollapsed" class="resize-handle-header" :class="{ resizing: isResizing }"
-				@mousedown="startResize" title="Drag to resize sidebar"></div>
+			<!-- Sidebar layout controls -->
+			<div class="flex items-center gap-1 glass-input rounded-lg p-0.5">
+				<button
+					class="w-8 h-7 flex items-center justify-center rounded-md text-gray-700 dark:text-gray-200 hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+					:class="{ 'bg-accent text-white hover:bg-accentHover': sidebarMode === 'collapsed' }"
+					@click="toggleCollapse"
+					:title="sidebarMode === 'collapsed' ? 'Show panel' : 'Collapse panel'">
+					<!-- panel collapse icon -->
+					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+							d="M9 5H5a2 2 0 00-2 2v10a2 2 0 002 2h4m0-14v14m0-14h10a2 2 0 012 2v10a2 2 0 01-2 2H9"></path>
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 9l-3 3 3 3"></path>
+					</svg>
+				</button>
+				<button
+					class="w-8 h-7 flex items-center justify-center rounded-md text-gray-700 dark:text-gray-200 hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+					:class="{ 'bg-accent text-white hover:bg-accentHover': sidebarMode === 'fullscreen' }"
+					@click="toggleFullscreen"
+					:title="sidebarMode === 'fullscreen' ? 'Exit full screen' : 'Full screen panel'">
+					<!-- fullscreen / restore icon -->
+					<svg v-if="sidebarMode !== 'fullscreen'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+							d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
+					</svg>
+					<svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+							d="M9 9L4 4m0 0v4m0-4h4m7 5l5-5m0 0v4m0-4h-4M9 15l-5 5m0 0v-4m0 4h4m7-5l5 5m0 0v-4m0 4h-4"></path>
+					</svg>
+				</button>
+			</div>
 
 			<!-- Spacer -->
 			<div class="flex-1"></div>
@@ -327,17 +388,12 @@
 			<!-- Controls -->
 			<div class="flex items-center gap-2">
 				<button
-					class="glass-input px-3 py-1.5 rounded-lg text-xs font-medium hover:scale-105 transition-transform text-gray-900 dark:text-white"
-					@click="toggleSidebar" title="Toggle sidebar">
-					{{ sidebarCollapsed ? '→' : '←' }}
-				</button>
-				<button
-					class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium shadow-md hover:shadow-lg transition-all"
+					class="bg-accent hover:bg-accentHover text-white px-3 py-1.5 rounded-lg text-xs font-medium shadow-md hover:shadow-md transition-all"
 					@click="saveParameters" title="Save parameters">
 					Save
 				</button>
 				<button
-					class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium shadow-md hover:shadow-lg transition-all"
+					class="bg-accent hover:bg-accentHover text-white px-3 py-1.5 rounded-lg text-xs font-medium shadow-md hover:shadow-md transition-all"
 					@click="$refs.fileInput.click()" title="Load parameters">
 					Load
 				</button>
@@ -352,11 +408,11 @@
 
 		<div class="flex h-screen pt-14 text-gray-800 dark:text-gray-200">
 			<!-- Sidebar with Parameters -->
-			<div class="sidebar glass-panel overflow-y-auto relative z-[100] transition-all duration-300"
-				:class="{ collapsed: sidebarCollapsed }"
-				:style="{ width: sidebarCollapsed ? '0' : sidebarWidth + 'px', flexShrink: 0 }">
+			<div class="sidebar glass-panel overflow-y-auto relative z-[100]"
+				:class="{ collapsed: sidebarMode === 'collapsed', fullscreen: sidebarMode === 'fullscreen', 'transition-all duration-300': !isResizing }"
+				:style="sidebarStyle">
 
-				<div class="p-6">
+				<div class="p-6 sidebar-content">
 
 					<!-- Basic Parameters -->
 					<h2
@@ -439,7 +495,7 @@
 										{{ isIncomeExcluded(index) ? 'Include' : 'Temporarily Exclude' }}
 									</button>
 									<button @click="editIncome(index)"
-										class="text-blue-500 hover:text-blue-600 text-xs font-medium px-2 py-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors">Edit</button>
+										class="text-accent hover:text-accentHover text-xs font-medium px-2 py-1 rounded hover:bg-accent/10 dark:hover:bg-accent/20 transition-colors">Edit</button>
 									<button @click="removeIncome(index)"
 										class="text-red-500 hover:text-red-600 text-xs font-medium px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors">Remove</button>
 								</div>
@@ -610,7 +666,7 @@
 						<!-- Action Buttons -->
 						<div class="flex gap-3 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700/50">
 							<button @click="saveIncome"
-								class="flex-1 bg-gradient-to-r from-primary to-secondary hover:opacity-90 text-white px-4 py-2.5 rounded-xl shadow-lg shadow-primary/20 font-medium text-sm transition-all transform active:scale-95">
+								class="flex-1 bg-gradient-to-r from-primary to-secondary hover:opacity-90 text-white px-4 py-2.5 rounded-xl shadow-md shadow-primary/20 font-medium text-sm transition-all transform active:scale-95">
 								{{ editingIncomeIndex !== null ? 'Update Income' : 'Add Income' }}
 							</button>
 							<button v-if="editingIncomeIndex !== null" @click="cancelEditIncome"
@@ -636,7 +692,7 @@
 							class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
 							Active Expenses</h3>
 						<div v-for="(expense, index) in params.expense" :key="index"
-							class="glass-card p-3 rounded-xl mb-2 flex justify-between items-center border-l-4 border-blue-500"
+							class="glass-card p-3 rounded-xl mb-2 flex justify-between items-center border-l-4 border-accent"
 							:class="{ 'opacity-50': isExpenseExcluded(index) }">
 							<div>
 								<div class="font-medium text-sm text-gray-800 dark:text-gray-200 flex items-center gap-2">
@@ -657,7 +713,7 @@
 									{{ isExpenseExcluded(index) ? 'Include' : 'Temporarily Exclude' }}
 								</button>
 								<button @click="editExpense(index)"
-									class="text-blue-500 hover:text-blue-600 text-xs font-medium px-2 py-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">Edit</button>
+									class="text-accent hover:text-accentHover text-xs font-medium px-2 py-1 rounded hover:bg-accent/10 dark:hover:bg-accent/20 transition-colors">Edit</button>
 								<button @click="removeExpense(index)"
 									class="text-red-500 hover:text-red-600 text-xs font-medium px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">Remove</button>
 							</div>
@@ -666,7 +722,7 @@
 
 					<!-- Add/Edit Expense Form -->
 					<div
-						class="glass-card p-4 rounded-2xl border border-blue-100 dark:border-blue-900/30 bg-white/50 dark:bg-gray-800/50">
+						class="glass-card p-4 rounded-2xl border border-accent/20 dark:border-accent/30 bg-white/50 dark:bg-gray-800/50">
 						<h3 class="text-sm font-medium text-gray-800 dark:text-gray-200 mb-4 flex items-center justify-between">
 							<div class="flex items-center gap-2">
 								<span class="w-2 h-2 rounded-full"
@@ -759,13 +815,13 @@
 											@input="range.amount = parseInputNumber($event.target.value)">
 									</div>
 									<button
-										class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-xl cursor-pointer text-sm font-medium shadow-lg shadow-red-500/20 mt-0"
+										class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-xl cursor-pointer text-sm font-medium shadow-md shadow-red-500/20 mt-0"
 										@click="removeExpenseRange(index)"
 										v-if="tempExpense.payload.length > 1">×</button>
 								</div>
 							</div>
 							<button @click="addExpenseRange"
-								class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl cursor-pointer text-sm font-medium shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30 mt-1.5">Add
+								class="bg-accent hover:bg-accentHover text-white px-4 py-2 rounded-xl cursor-pointer text-sm font-medium shadow-md hover:shadow-md mt-1.5">Add
 								Range</button>
 						</div>
 
@@ -810,7 +866,7 @@
 						<!-- Action Buttons -->
 						<div class="flex gap-2 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
 							<button @click="saveExpense"
-								class="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 transition-all transform hover:-translate-y-0.5">
+								class="flex-1 bg-accent hover:bg-accentHover text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-md transition-all transform hover:-translate-y-0.5">
 								{{ editingExpenseIndex !== null ? 'Update Expense' : 'Add Expense' }}
 							</button>
 							<button v-if="editingExpenseIndex !== null" @click="cancelEditExpense"
@@ -832,7 +888,7 @@
 
 					<!-- Tax Validation Error -->
 					<div v-if="!taxValidation.ok"
-						class="mb-4 p-4 bg-red-50/80 dark:bg-red-900/30 backdrop-filter backdrop-blur-lg border border-red-300 dark:border-red-800 rounded-2xl">
+						class="mb-4 p-4 bg-red-50/80 dark:bg-red-900/30 border border-red-300 dark:border-red-800 rounded-2xl">
 						<p class="text-sm text-red-800 dark:text-red-300">
 							<strong>Tax Error:</strong> {{ taxValidation.reason }}
 						</p>
@@ -899,12 +955,12 @@
 										class="glass-input px-3 py-2 rounded-xl text-sm min-w-0 w-full text-gray-900 dark:text-white">
 								</div>
 								<button
-									class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-xl cursor-pointer text-sm font-medium shadow-lg shadow-red-500/20 mt-0"
+									class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-xl cursor-pointer text-sm font-medium shadow-md shadow-red-500/20 mt-0"
 									@click="removeTaxRange(index)" v-if="params.tax.payload.length > 1">×</button>
 							</div>
 						</div>
 						<button @click="addTaxRange"
-							class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl cursor-pointer text-sm font-medium shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30 mt-1.5">Add
+							class="bg-accent hover:bg-accentHover text-white px-4 py-2 rounded-xl cursor-pointer text-sm font-medium shadow-md hover:shadow-md mt-1.5">Add
 							Range</button>
 					</div>
 
@@ -953,65 +1009,133 @@
 							class="tooltip-icon inline-flex items-center justify-center w-3 h-3 rounded-full bg-gray-400 text-white text-[8px] font-normal cursor-help opacity-60 hover:opacity-100 ml-2"
 							:data-tooltip="tooltips.assetAllocation">?</span>
 					</h2>
-					<div v-for="(asset, index) in params.assets" :key="index" class="glass-card p-4 rounded-2xl mb-3"
-						:class="{ 'opacity-50': isAssetExcluded(index) }">
-						<div class="flex items-center justify-between mb-2">
-							<div class="flex items-center gap-2">
-								<span class="font-medium text-sm text-gray-800 dark:text-gray-200">{{ asset.name }}</span>
-								<span v-if="isAssetExcluded(index)" class="text-xs text-orange-500 font-normal">(Excluded)</span>
-							</div>
-							<div class="flex gap-2">
-								<button @click="toggleExcludeAsset(index)"
-									class="text-xs font-medium px-2 py-1 rounded transition-colors"
-									:class="isAssetExcluded(index) ? 'text-green-500 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30' : 'text-orange-500 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/30'">
-									{{ isAssetExcluded(index) ? 'Include' : 'Temporarily Exclude' }}
-								</button>
-								<button
-									class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-xl cursor-pointer text-sm font-medium shadow-lg shadow-red-500/20"
-									@click="removeAsset(index)" v-if="params.assets.length > 1">×</button>
+					<!-- Active Assets List -->
+					<div class="mb-6">
+						<h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Active Assets
+						</h3>
+						<div v-if="params.assets.length === 0" class="text-sm text-gray-500 italic mb-4">
+							No assets defined.
+						</div>
+						<div v-else class="space-y-3 mb-4">
+							<div v-for="(asset, index) in params.assets" :key="index"
+								class="glass-card p-3 rounded-xl flex justify-between items-center"
+								:class="{ 'opacity-50': isAssetExcluded(index) }">
+								<div>
+									<div class="font-medium text-sm text-gray-900 dark:text-white flex items-center gap-2">
+										{{ asset.name }}
+										<span v-if="isAssetExcluded(index)" class="text-xs text-orange-500 font-normal">(Excluded)</span>
+									</div>
+									<div class="text-xs text-gray-500">
+										<span>{{ formatCurrency(asset.amount) }}</span>
+										<span> · {{ asset.rate }}% return</span>
+										<span> · {{ asset.liquid ? 'Liquid' : 'Illiquid' }}</span>
+									</div>
+								</div>
+								<div class="flex gap-2">
+									<button @click="toggleExcludeAsset(index)"
+										class="text-xs font-medium px-2 py-1 rounded transition-colors"
+										:class="isAssetExcluded(index) ? 'text-green-500 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30' : 'text-orange-500 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/30'">
+										{{ isAssetExcluded(index) ? 'Include' : 'Temporarily Exclude' }}
+									</button>
+									<button @click="editAsset(index)"
+										class="text-accent hover:text-accentHover text-xs font-medium px-2 py-1 rounded hover:bg-accent/10 dark:hover:bg-accent/20 transition-colors">Edit</button>
+									<button @click="removeAsset(index)"
+										class="text-red-500 hover:text-red-600 text-xs font-medium px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors">Remove</button>
+								</div>
 							</div>
 						</div>
-						<div class="grid gap-1.5 items-end"
-							style="grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);">
+					</div>
+
+					<!-- Add/Edit Asset Form -->
+					<div class="glass-card p-5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
+						<h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-4 flex items-center justify-between">
+							<div class="flex items-center gap-2">
+								<span v-if="editingAssetIndex !== null" class="w-2 h-2 rounded-full bg-amber-500"></span>
+								<span v-else class="w-2 h-2 rounded-full bg-green-500"></span>
+								{{ editingAssetIndex !== null ? 'Edit Asset' : 'Add New Asset' }}
+							</div>
+							<button @click="assetFormCollapsed = !assetFormCollapsed"
+								class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+								<svg class="w-4 h-4 transition-transform" :class="{ 'rotate-180': !assetFormCollapsed }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+								</svg>
+							</button>
+						</h3>
+
+						<div v-show="!assetFormCollapsed || editingAssetIndex !== null">
+
+						<!-- Asset Validation Error -->
+						<div v-if="!assetValidation.ok"
+							class="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
+							<p class="text-xs text-red-600 dark:text-red-300 flex items-center gap-2">
+								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+										d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+								</svg>
+								{{ assetValidation.reason }}
+							</p>
+						</div>
+
+						<!-- Asset Name -->
+						<div class="flex flex-col mb-4">
+							<label class="font-medium mb-1.5 text-gray-600 dark:text-gray-400 text-xs">Asset Name</label>
+							<input type="text" v-model="tempAsset.name"
+								class="glass-input px-3 py-2 rounded-xl text-sm min-w-0 w-full text-gray-900 dark:text-white bg-white/50 dark:bg-gray-800/50 focus:ring-2 focus:ring-primary/50 transition-all"
+								placeholder="e.g., Stocks, Cash, Property">
+						</div>
+
+						<!-- Asset Fields -->
+						<div class="grid gap-3 mb-4"
+							style="grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);">
 							<div class="flex flex-col min-w-0">
-								<label class="font-medium mb-1 text-gray-600 dark:text-gray-400 text-xs">Amount ({{
+								<label class="font-medium mb-1.5 text-gray-600 dark:text-gray-400 text-xs">Amount ({{
 									params.currency }})</label>
 								<input type="text"
 									class="glass-input px-3 py-2 rounded-xl text-sm min-w-0 w-full text-gray-900 dark:text-white"
-									:value="formatInputNumber(asset.amount)"
-									@input="asset.amount = parseInputNumber($event.target.value)">
+									:value="formatInputNumber(tempAsset.amount)"
+									@input="tempAsset.amount = parseInputNumber($event.target.value)">
 							</div>
 							<div class="flex flex-col min-w-0">
-								<div class="flex items-center gap-1.5">
-									<label class="font-medium mb-1 text-gray-600 dark:text-gray-400 text-xs">Return Rate
+								<div class="flex items-center gap-1.5 mb-1.5">
+									<label class="font-medium text-gray-600 dark:text-gray-400 text-xs">Return Rate
 										(%)</label>
 									<span
 										class="tooltip-icon inline-flex items-center justify-center w-3 h-3 rounded-full bg-gray-400 text-white text-[8px] font-normal cursor-help opacity-60 hover:opacity-100"
 										:data-tooltip="tooltips.returnRate">?</span>
 								</div>
-								<input type="number" v-model.number="asset.rate" step="0.1" min="-100" max="1000"
+								<input type="number" v-model.number="tempAsset.rate" step="0.1" min="-100" max="1000"
 									class="glass-input px-3 py-2 rounded-xl text-sm min-w-0 w-full text-gray-900 dark:text-white"
-									@blur="asset.rate = Math.max(-100, Math.min(1000, asset.rate || 0))">
+									@blur="tempAsset.rate = Math.max(-100, Math.min(1000, tempAsset.rate || 0))">
 							</div>
 							<div class="flex flex-col min-w-0">
-								<div class="flex items-center gap-1.5">
+								<div class="flex items-center gap-1.5 mb-1.5">
 									<label
-										class="font-medium mb-1 text-gray-600 dark:text-gray-400 text-xs">Liquid?</label>
+										class="font-medium text-gray-600 dark:text-gray-400 text-xs">Liquid?</label>
 									<span
 										class="tooltip-icon inline-flex items-center justify-center w-3 h-3 rounded-full bg-gray-400 text-white text-[8px] font-normal cursor-help opacity-60 hover:opacity-100"
 										:data-tooltip="tooltips.liquid">?</span>
 								</div>
-								<select v-model="asset.liquid"
+								<select v-model="tempAsset.liquid"
 									class="glass-input px-3 py-2 rounded-xl text-sm min-w-0 w-full text-gray-900 dark:text-white">
 									<option :value="true">Yes</option>
 									<option :value="false">No</option>
 								</select>
 							</div>
 						</div>
+
+						<!-- Action Buttons -->
+						<div class="flex gap-3 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700/50">
+							<button @click="saveAsset"
+								class="flex-1 bg-gradient-to-r from-primary to-secondary hover:opacity-90 text-white px-4 py-2.5 rounded-xl shadow-md shadow-primary/20 font-medium text-sm transition-all transform active:scale-95">
+								{{ editingAssetIndex !== null ? 'Update Asset' : 'Add Asset' }}
+							</button>
+							<button v-if="editingAssetIndex !== null" @click="cancelEditAsset"
+								class="px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 font-medium text-sm transition-colors">
+								Cancel
+							</button>
+						</div>
+						</div>
 					</div>
-					<button @click="addAsset"
-						class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl cursor-pointer text-sm font-medium shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30 mt-1.5">Add
-						Asset</button>
 
 					<!-- Transactions -->
 					<h2
@@ -1077,13 +1201,13 @@
 									@input="transaction.amount = parseInputNumber($event.target.value)">
 							</div>
 							<button
-								class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-xl cursor-pointer text-sm font-medium shadow-lg shadow-red-500/20 mt-0"
+								class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-xl cursor-pointer text-sm font-medium shadow-md shadow-red-500/20 mt-0"
 								@click="removeTransaction(index)">×</button>
 						</div>
 						<!-- Helper text showing available amount -->
 						<div
-							class="mt-3 p-3 bg-blue-50/80 dark:bg-blue-900/30 backdrop-filter backdrop-blur-lg border border-blue-200 dark:border-blue-800 rounded-xl">
-							<p class="text-xs text-blue-800 dark:text-blue-300">
+							class="mt-3 p-3 bg-accent/10 dark:bg-accent/15 border border-accent/30 dark:border-accent/40 rounded-xl">
+							<p class="text-xs text-accentHover dark:text-accent">
 								<strong>At the end of year {{ transaction.year }}</strong> (after all
 								gains/income/expenses): You will have
 								<strong>{{ params.currency }}{{ formatNumber(getAssetValueAtYear(transaction.fromAsset,
@@ -1103,7 +1227,7 @@
 						</div>
 					</div>
 					<button @click="addTransaction"
-						class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl cursor-pointer text-sm font-medium shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30 mt-1.5">Add
+						class="bg-accent hover:bg-accentHover text-white px-4 py-2 rounded-xl cursor-pointer text-sm font-medium shadow-md hover:shadow-md mt-1.5">Add
 						Transaction</button>
 
 					<!-- Milestones -->
@@ -1123,43 +1247,52 @@
 								@input="params.milestones[index] = parseInputNumber($event.target.value)"
 								placeholder="Milestone amount (€)">
 							<button
-								class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-xl cursor-pointer text-sm font-medium shadow-lg shadow-red-500/20"
+								class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-xl cursor-pointer text-sm font-medium shadow-md shadow-red-500/20"
 								@click="removeMilestone(index)">×</button>
 						</div>
 					</div>
 					<button @click="addMilestone"
-						class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl cursor-pointer text-sm font-medium shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30">Add
+						class="bg-accent hover:bg-accentHover text-white px-4 py-2 rounded-xl cursor-pointer text-sm font-medium shadow-md hover:shadow-md">Add
 						Milestone</button>
 				</div>
 			</div>
 
+			<!-- Resize handle (only when docked at a normal width) -->
+			<div v-show="sidebarMode === 'normal'" class="resize-bar" :class="{ resizing: isResizing }"
+				@mousedown="startResize" title="Drag to resize panel"></div>
+
 			<!-- Main Content with Results -->
-			<div class="flex-1 p-8 overflow-y-auto relative z-[1]">
+			<div v-show="sidebarMode !== 'fullscreen'" class="flex-1 p-8 overflow-y-auto relative z-[1]">
 				<div v-if="projection.length > 0" class="animate-in">
 					<!-- Key Metrics -->
-					<h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Key Metrics</h2>
-					<div class="glass-card p-6 rounded-3xl mb-6">
-						<p class="my-2 text-sm text-gray-700 dark:text-gray-300"><strong
-								class="text-gray-900 dark:text-white font-semibold">Initial Net Worth:</strong> {{
-							params.currency }}{{ formatNumber(projection[0].totalNetWorth) }}</p>
-						<p class="my-2 text-sm text-gray-700 dark:text-gray-300"><strong
-								class="text-gray-900 dark:text-white font-semibold">Final Net Worth (Year {{
-								params.years }}):</strong> {{ params.currency }}{{
-							formatNumber(projection[projection.length - 1].totalNetWorth) }}</p>
-						<p class="my-2 text-sm text-gray-700 dark:text-gray-300"><strong
-								class="text-gray-900 dark:text-white font-semibold">Total Growth:</strong> {{
-							params.currency }}{{ formatNumber(projection[projection.length - 1].totalNetWorth -
-							projection[0].totalNetWorth) }}</p>
-						<p class="my-2 text-sm text-gray-700 dark:text-gray-300"><strong
-								class="text-gray-900 dark:text-white font-semibold">Total Return:</strong> {{
-							(((projection[projection.length - 1].totalNetWorth / projection[0].totalNetWorth) - 1) *
-							100).toFixed(1) }}%</p>
+					<h2 class="mb-4 text-2xl font-semibold text-gray-900 dark:text-white">Key Metrics</h2>
+					<div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+						<div class="glass-card rounded-2xl p-5">
+							<div class="text-[10px] uppercase tracking-[0.14em]" style="color: var(--muted);">Initial Net Worth</div>
+							<div class="font-mono text-xl mt-2 text-gray-900 dark:text-white">{{ params.currency }}{{ formatNumber(projection[0].totalNetWorth) }}</div>
+						</div>
+						<div class="glass-card rounded-2xl p-5">
+							<div class="text-[10px] uppercase tracking-[0.14em]" style="color: var(--muted);">Final · Year {{ params.years }}</div>
+							<div class="font-mono text-xl mt-2 text-gray-900 dark:text-white">{{ params.currency }}{{ formatNumber(projection[projection.length - 1].totalNetWorth) }}</div>
+						</div>
+						<div class="glass-card rounded-2xl p-5">
+							<div class="text-[10px] uppercase tracking-[0.14em]" style="color: var(--muted);">Total Growth</div>
+							<div class="font-mono text-xl mt-2"
+								:style="{ color: (projection[projection.length - 1].totalNetWorth - projection[0].totalNetWorth) >= 0 ? 'var(--positive)' : 'var(--negative)' }">
+								{{ params.currency }}{{ formatNumber(projection[projection.length - 1].totalNetWorth - projection[0].totalNetWorth) }}</div>
+						</div>
+						<div class="glass-card rounded-2xl p-5">
+							<div class="text-[10px] uppercase tracking-[0.14em]" style="color: var(--muted);">Total Return</div>
+							<div class="font-mono text-xl mt-2"
+								:style="{ color: ((projection[projection.length - 1].totalNetWorth / projection[0].totalNetWorth) - 1) >= 0 ? 'var(--positive)' : 'var(--negative)' }">
+								{{ (((projection[projection.length - 1].totalNetWorth / projection[0].totalNetWorth) - 1) * 100).toFixed(1) }}%</div>
+						</div>
 					</div>
 
 					<!-- Die With Zero Analysis -->
-					<h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
+					<h2 class="mb-4 text-2xl font-semibold text-gray-900 dark:text-white">
 						Die With {{ params.currency }}<input type="text"
-							class="glass-input inline-block w-[100px] px-3 py-1 rounded-xl text-base text-gray-900 dark:text-white text-right mx-2"
+							class="glass-input font-mono inline-block w-[110px] px-3 py-1 rounded-lg text-base text-gray-900 dark:text-white text-right mx-2"
 							:value="formatInputNumber(params.targetFinalNetWorth || 0)"
 							@input="updateTargetFinalNetWorth($event.target.value)" placeholder="0"> Analysis
 						<span
@@ -1175,7 +1308,7 @@
 							<p class="text-sm text-gray-800 dark:text-gray-200 mb-2">If you stop working
 								<strong>immediately</strong>:
 							</p>
-							<p class="text-2xl font-medium text-gray-800 dark:text-gray-200">{{ params.currency }}{{
+							<p class="text-2xl font-mono font-medium text-gray-800 dark:text-gray-200">{{ params.currency }}{{
 								formatNumber(dieWithZero.stopNow) }}</p>
 							<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Final net worth in year {{
 								params.years }}</p>
@@ -1189,7 +1322,7 @@
 							<div
 								v-if="dieWithZero.optimalYear !== null && dieWithZero.optimalFinalWorth >= dieWithZero.target">
 								<p class="text-sm text-gray-800 dark:text-gray-200 mb-2">Stop working at:</p>
-								<p class="text-2xl font-medium text-gray-800 dark:text-gray-200">Year {{
+								<p class="text-2xl font-mono font-medium text-gray-800 dark:text-gray-200">Year {{
 									dieWithZero.optimalYear }}</p>
 								<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Final: {{ params.currency }}{{
 									formatNumber(dieWithZero.optimalFinalWorth) }}</p>
@@ -1212,7 +1345,7 @@
 								v-if="dieWithZero.requiredAnnualSavings !== null && dieWithZero.requiredAnnualSavings !== 0">
 								<p class="text-sm text-gray-800 dark:text-gray-200 mb-2">{{
 									dieWithZero.requiredAnnualSavings > 0 ? 'Additional savings needed:' : 'You can reduce savings by:' }}</p>
-								<p class="text-2xl font-medium"
+								<p class="text-2xl font-mono font-medium"
 									:class="dieWithZero.requiredAnnualSavings > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'">
 									{{ params.currency }}{{ formatNumber(Math.abs(dieWithZero.requiredAnnualSavings))
 									}}/year
@@ -1220,8 +1353,8 @@
 								<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">To reach target while working
 									all {{ params.years }} years</p>
 								<div v-if="suggestedExpenseAdjustment"
-									class="mt-3 p-3 bg-blue-50/80 dark:bg-blue-900/30 backdrop-filter backdrop-blur-lg border border-blue-200 dark:border-blue-800 rounded-2xl">
-									<p class="text-xs text-blue-800 dark:text-blue-300">
+									class="mt-3 p-3 bg-accent/10 dark:bg-accent/15 border border-accent/30 dark:border-accent/40 rounded-2xl">
+									<p class="text-xs text-accentHover dark:text-accent">
 										<strong>Try this:</strong> Set your expense to <strong>Fixed</strong> with
 										starting value <strong>{{ params.currency }}{{
 											formatNumber(suggestedExpenseAdjustment.startingExpense) }}</strong>
@@ -1240,7 +1373,7 @@
 					</div>
 
 					<!-- Chart -->
-					<h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Net Worth Projection</h2>
+					<h2 class="mb-4 text-2xl font-semibold text-gray-900 dark:text-white">Net Worth Projection</h2>
 					<div class="glass-card p-6 rounded-3xl relative h-[400px] mb-6">
 						<canvas ref="chart"></canvas>
 					</div>
